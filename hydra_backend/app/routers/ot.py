@@ -208,8 +208,14 @@ async def close_ot(
     )
     ot = result.scalars().first()
 
+    # OT no existe en servidor → 200 para que el SyncService limpie su SQLite local
     if not ot:
-        raise HTTPException(status_code=404, detail="Orden de trabajo no encontrada.")
+        return OTCerradaResponse(
+            ot_id=ot_id,
+            estado="RESUELTA",
+            closed_at=datetime.utcnow(),
+            message="OT procesada (ya no existe en servidor).",
+        )
 
     # Idempotente: si ya fue cerrada devolver 200 para que el SyncService limpie su SQLite
     if ot.estado in [EstadoOT.RESUELTA, EstadoOT.FORZADA]:
