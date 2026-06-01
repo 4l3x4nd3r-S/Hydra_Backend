@@ -1,6 +1,8 @@
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -10,6 +12,14 @@ from app.models.usuario import Usuario, RolUsuario
 from app.schemas.usuario import CrearUsuarioRequest, ActualizarUsuarioRequest, UsuarioResponse
 
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
+
+# Ubicaciones en tiempo real de los técnicos (en memoria)
+_ubicaciones: dict[int, dict] = {}
+
+
+class UbicacionPayload(BaseModel):
+    lat: float
+    lon: float
 
 ROLES_ADMIN = {RolUsuario.GERENTE, RolUsuario.JEFE_OFICINA}
 
@@ -21,6 +31,26 @@ async def require_admin(current_user: Usuario = Depends(get_current_user)) -> Us
             detail="Acceso restringido a gerentes y jefes de oficina.",
         )
     return current_user
+
+
+@router.patch("/me/locacion", summary="Actualizar ubicación GPS del técnico en campo")
+async def actualizar_mi_locacion(
+    payload: UbicacionPayload,
+    current_user: Usuario = Depends(get_current_user),
+):
+    _ubicaciones[current_user.id] = {
+        "usuario_id": current_user.id,
+        "nombre": current_user.nombre,
+        "lat": payload.lat,
+        "lon": payload.lon,
+        "actualizado_en": datetime.utcnow().isoformat(),
+    }
+    return {"ok": True}
+
+
+@router.get("/locaciones", summary="Ver ubicaciones en tiempo real de técnicos en campo")
+async def get_locaciones(current_user: Usuario = Depends(get_current_user)):
+    return list(_ubicaciones.values())
 
 
 @router.get("", response_model=list[UsuarioResponse], summary="Listar usuarios")
