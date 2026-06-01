@@ -168,7 +168,7 @@ async def close_ot(
     materiales_usados: str = Form(...),
     lat_reparacion: float = Form(...),
     lon_reparacion: float = Form(...),
-    presion_verificacion_mca: float = Form(...),
+    presion_verificacion_mca: Optional[float] = Form(None),
     justificacion_forzado: Optional[str] = Form(None),
     foto_antes: UploadFile = File(...),
     foto_despues: UploadFile = File(...),
@@ -203,7 +203,10 @@ async def close_ot(
     firma_url = await upload_file(firma_tecnico, "firmas")
 
     now = datetime.now(timezone.utc)
-    estado_final = EstadoOT.FORZADA if presion_verificacion_mca < 15.0 else EstadoOT.RESUELTA
+    if presion_verificacion_mca is not None:
+        estado_final = EstadoOT.FORZADA if presion_verificacion_mca < 15.0 else EstadoOT.RESUELTA
+    else:
+        estado_final = EstadoOT.RESUELTA
 
     ot.estado = estado_final
     ot.closed_at = now

@@ -25,21 +25,33 @@ async def crear_sensor(
     current_user: Usuario = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    existing = await db.execute(select(Sensor).where(Sensor.point_id == payload.point_id))
+    sensor_id = payload.id or payload.point_id
+
+    existing = await db.execute(select(Sensor).where(Sensor.id == sensor_id))
     if existing.scalars().first():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Ya existe un sensor con point_id '{payload.point_id}'.",
+            detail=f"Ya existe un sensor con id '{sensor_id}'.",
         )
+
+    # Si sector_id no existe en la BD, lo ignoramos (no causa error 500)
+    sector_id_valido = None
+    if payload.sector_id is not None:
+        from app.models.sector import Sector as SectorModel
+        sector_check = await db.execute(
+            select(SectorModel).where(SectorModel.id == payload.sector_id)
+        )
+        if sector_check.scalars().first():
+            sector_id_valido = payload.sector_id
 
     ubicacion = None
     if payload.lat is not None and payload.lon is not None:
         ubicacion = WKTElement(f"POINT({payload.lon} {payload.lat})", srid=4326)
 
     sensor = Sensor(
-        id=payload.point_id,
+        id=sensor_id,
         point_id=payload.point_id,
-        sector_id=payload.sector_id,
+        sector_id=sector_id_valido,
         ubicacion=ubicacion,
     )
     db.add(sensor)

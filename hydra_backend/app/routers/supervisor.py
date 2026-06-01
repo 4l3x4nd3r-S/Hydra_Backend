@@ -128,6 +128,14 @@ async def crear_ot(
             detail="El usuario asignado no existe o no es técnico de campo.",
         )
 
+    # Verificar que el sensor existe; si no, desvincularlo (no causar 500)
+    sensor_id_valido = None
+    if payload.sensor_id:
+        from app.models.sensor import Sensor
+        sensor_check = await db.execute(select(Sensor).where(Sensor.id == payload.sensor_id))
+        if sensor_check.scalars().first():
+            sensor_id_valido = payload.sensor_id
+
     alerta = None
     if payload.alerta_id:
         alerta_result = await db.execute(select(Alerta).where(Alerta.id == payload.alerta_id))
@@ -136,19 +144,32 @@ async def crear_ot(
             raise HTTPException(status_code=404, detail="Alerta no encontrada.")
 
     ot = OrdenTrabajo(
-        sensor_id=payload.sensor_id,
+        sensor_id=sensor_id_valido,
         sector_id=payload.sector_id,
         asignado_a=payload.asignado_a,
         prioridad=payload.prioridad,
         estado=EstadoOT.PENDIENTE,
     )
     db.add(ot)
-    await db.flush()  # obtener ot.id antes del commit
+    await db.flush()
 
     if alerta:
         alerta.estado = EstadoAlerta.ATENDIDA
         alerta.ot_id = ot.id
         alerta.atendida_at = datetime.now(timezone.utc)
+
+    # Si viene tipo_alerta, crear una alerta automáticamente vinculada a la OT
+    if payload.tipo_alerta:
+        nueva_alerta = Alerta(
+            sensor_id=sensor_id_valido,
+            tipo=payload.tipo_alerta.upper(),
+            nivel="ALTA",
+            estado=EstadoAlerta.ATENDIDA,
+            descripcion=f"Alerta generada al crear OT: {payload.tipo_alerta}",
+            ot_id=ot.id,
+            atendida_at=datetime.now(timezone.utc),
+        )
+        db.add(nueva_alerta)
 
     await db.commit()
     await db.refresh(ot)

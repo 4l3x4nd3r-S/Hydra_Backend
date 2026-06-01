@@ -16,10 +16,12 @@ class TecnicoResponse(BaseModel):
 
 
 class CrearOTRequest(BaseModel):
-    sensor_id: Optional[str] = None
+    sensor_id: Optional[str] = None   # ID del dispositivo (ej: "DL-02")
+    point_id: Optional[str] = None    # ID del punto de presión (ej: "TRIUNFO_P-02")
     sector_id: Optional[int] = None
     asignado_a: int
     prioridad: PrioridadOT
+    tipo_alerta: Optional[str] = None  # Ej: "FUGA", "ROTURA", "PRESION_BAJA"
     alerta_id: Optional[int] = None
 
 

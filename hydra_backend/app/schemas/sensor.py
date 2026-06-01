@@ -5,7 +5,8 @@ from pydantic import BaseModel
 
 
 class CrearSensorRequest(BaseModel):
-    point_id: str
+    id: Optional[str] = None       # ID del dispositivo (ej: "DL-02")
+    point_id: str                  # ID del punto de medición (ej: "TRIUNFO_P-02")
     sector_id: Optional[int] = None
     lat: Optional[float] = None
     lon: Optional[float] = None
