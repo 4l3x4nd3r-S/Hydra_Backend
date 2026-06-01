@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
@@ -46,19 +46,17 @@ async def get_assigned_ots(
 
         if ot.sensor_id:
             sensor_result = await db.execute(
-                select(Sensor).where(Sensor.id == ot.sensor_id)
+                select(
+                    Sensor.point_id,
+                    ST_AsGeoJSON(Sensor.ubicacion).label("geojson"),
+                ).where(Sensor.id == ot.sensor_id)
             )
-            sensor = sensor_result.scalars().first()
-            if sensor:
-                point_id = sensor.point_id
-                if sensor.ubicacion is not None:
-                    geojson_result = await db.execute(
-                        select(ST_AsGeoJSON(sensor.ubicacion))
-                    )
-                    geojson_str = geojson_result.scalar()
-                    if geojson_str:
-                        coords = json.loads(geojson_str)["coordinates"]
-                        ubicacion = UbicacionGPS(lat=coords[1], lon=coords[0])
+            sensor_row = sensor_result.first()
+            if sensor_row:
+                point_id = sensor_row.point_id
+                if sensor_row.geojson:
+                    coords = json.loads(sensor_row.geojson)["coordinates"]
+                    ubicacion = UbicacionGPS(lat=coords[1], lon=coords[0])
 
         output.append(
             OTAsignadaResponse(
