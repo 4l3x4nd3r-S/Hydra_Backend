@@ -99,7 +99,7 @@ async def start_ot(
         )
 
     ot.estado = EstadoOT.EN_PROCESO
-    ot.started_at = datetime.now(timezone.utc)
+    ot.started_at = datetime.utcnow()
     await db.commit()
 
     return OTIniciadaResponse(
@@ -202,7 +202,7 @@ async def close_ot(
     foto_despues_url = await upload_file(foto_despues, "fotos")
     firma_url = await upload_file(firma_tecnico, "firmas")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
     if presion_verificacion_mca is not None:
         estado_final = EstadoOT.FORZADA if presion_verificacion_mca < 15.0 else EstadoOT.RESUELTA
     else:

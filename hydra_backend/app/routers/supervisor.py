@@ -101,7 +101,7 @@ async def descartar_alerta(
         raise HTTPException(status_code=400, detail=f"La alerta ya fue {alerta.estado.lower()}.")
 
     alerta.estado = EstadoAlerta.DESCARTADA
-    alerta.atendida_at = datetime.now(timezone.utc)
+    alerta.atendida_at = datetime.utcnow()
     await db.commit()
     await db.refresh(alerta)
     return alerta
@@ -156,7 +156,7 @@ async def crear_ot(
     if alerta:
         alerta.estado = EstadoAlerta.ATENDIDA
         alerta.ot_id = ot.id
-        alerta.atendida_at = datetime.now(timezone.utc)
+        alerta.atendida_at = datetime.utcnow()
 
     # Si viene tipo_alerta, crear una alerta automáticamente vinculada a la OT
     if payload.tipo_alerta:
@@ -167,7 +167,7 @@ async def crear_ot(
             estado=EstadoAlerta.ATENDIDA,
             descripcion=f"Alerta generada al crear OT: {payload.tipo_alerta}",
             ot_id=ot.id,
-            atendida_at=datetime.now(timezone.utc),
+            atendida_at=datetime.utcnow(),
         )
         db.add(nueva_alerta)
 
