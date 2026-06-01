@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -9,7 +10,9 @@ from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.usuario import Usuario, RolUsuario
 from app.models.orden_trabajo import OrdenTrabajo, EstadoOT
+from app.models.alerta import Alerta, EstadoAlerta
 from app.schemas.supervisor import TecnicoResponse, CrearOTRequest, OTSupervisorResponse
+from app.schemas.alerta import CrearAlertaRequest, AlertaResponse
 
 router = APIRouter(prefix="/supervisor", tags=["Supervisor"])
 
@@ -38,6 +41,72 @@ async def list_tecnicos(
     return result.scalars().all()
 
 
+@router.get("/alertas", response_model=list[AlertaResponse], summary="Listar alertas del sistema")
+async def list_alertas(
+    estado: Optional[str] = Query(None, description="Filtrar por estado: PENDIENTE, ATENDIDA, DESCARTADA"),
+    current_user: Usuario = Depends(require_supervisor),
+    db: AsyncSession = Depends(get_db),
+):
+    query = select(Alerta).order_by(Alerta.created_at.desc())
+    if estado:
+        query = query.where(Alerta.estado == estado.upper())
+    else:
+        query = query.where(Alerta.estado == EstadoAlerta.PENDIENTE)
+
+    result = await db.execute(query)
+    return result.scalars().all()
+
+
+@router.post(
+    "/alertas",
+    response_model=AlertaResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Crear alerta manualmente (o desde modelo ML)",
+)
+async def crear_alerta(
+    payload: CrearAlertaRequest,
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    alerta = Alerta(
+        sensor_id=payload.sensor_id,
+        sector_id=payload.sector_id,
+        tipo=payload.tipo,
+        nivel=payload.nivel,
+        estado=EstadoAlerta.PENDIENTE,
+        descripcion=payload.descripcion,
+        presion_detectada_mca=payload.presion_detectada_mca,
+    )
+    db.add(alerta)
+    await db.commit()
+    await db.refresh(alerta)
+    return alerta
+
+
+@router.patch(
+    "/alertas/{alerta_id}/descartar",
+    response_model=AlertaResponse,
+    summary="Descartar una alerta",
+)
+async def descartar_alerta(
+    alerta_id: int,
+    current_user: Usuario = Depends(require_supervisor),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Alerta).where(Alerta.id == alerta_id))
+    alerta = result.scalars().first()
+    if not alerta:
+        raise HTTPException(status_code=404, detail="Alerta no encontrada.")
+    if alerta.estado != EstadoAlerta.PENDIENTE:
+        raise HTTPException(status_code=400, detail=f"La alerta ya fue {alerta.estado.lower()}.")
+
+    alerta.estado = EstadoAlerta.DESCARTADA
+    alerta.atendida_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(alerta)
+    return alerta
+
+
 @router.post(
     "/ots",
     response_model=OTSupervisorResponse,
@@ -59,6 +128,13 @@ async def crear_ot(
             detail="El usuario asignado no existe o no es técnico de campo.",
         )
 
+    alerta = None
+    if payload.alerta_id:
+        alerta_result = await db.execute(select(Alerta).where(Alerta.id == payload.alerta_id))
+        alerta = alerta_result.scalars().first()
+        if not alerta:
+            raise HTTPException(status_code=404, detail="Alerta no encontrada.")
+
     ot = OrdenTrabajo(
         sensor_id=payload.sensor_id,
         sector_id=payload.sector_id,
@@ -67,6 +143,13 @@ async def crear_ot(
         estado=EstadoOT.PENDIENTE,
     )
     db.add(ot)
+    await db.flush()  # obtener ot.id antes del commit
+
+    if alerta:
+        alerta.estado = EstadoAlerta.ATENDIDA
+        alerta.ot_id = ot.id
+        alerta.atendida_at = datetime.now(timezone.utc)
+
     await db.commit()
     await db.refresh(ot)
 
@@ -86,8 +169,8 @@ async def crear_ot(
 
 @router.get("/ots", response_model=list[OTSupervisorResponse], summary="Listar todas las órdenes de trabajo")
 async def list_all_ots(
-    estado: Optional[str] = Query(None, description="Filtrar por estado: PENDIENTE, EN_PROCESO, RESUELTA, FORZADA"),
-    prioridad: Optional[str] = Query(None, description="Filtrar por prioridad: MEDIA, ALTA, CRITICA"),
+    estado: Optional[str] = Query(None, description="Filtrar: PENDIENTE, EN_PROCESO, RESUELTA, FORZADA"),
+    prioridad: Optional[str] = Query(None, description="Filtrar: MEDIA, ALTA, CRITICA"),
     current_user: Usuario = Depends(require_supervisor),
     db: AsyncSession = Depends(get_db),
 ):

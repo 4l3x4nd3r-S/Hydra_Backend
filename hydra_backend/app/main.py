@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 import os
 
 from app.core.config import settings
-from app.routers import auth, ot, analytics, supervisor
+from app.routers import auth, ot, analytics, supervisor, sensores
 
 app = FastAPI(
     title="Hydra API",
@@ -27,6 +27,7 @@ app.include_router(auth.router, prefix="/api/v1")
 app.include_router(ot.router, prefix="/api/v1")
 app.include_router(analytics.router, prefix="/api/v1")
 app.include_router(supervisor.router, prefix="/api/v1")
+app.include_router(sensores.router, prefix="/api/v1")
 
 
 @app.get("/health", tags=["Sistema"], summary="Estado del servidor")

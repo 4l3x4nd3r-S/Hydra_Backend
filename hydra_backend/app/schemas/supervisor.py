@@ -20,6 +20,7 @@ class CrearOTRequest(BaseModel):
     sector_id: Optional[int] = None
     asignado_a: int
     prioridad: PrioridadOT
+    alerta_id: Optional[int] = None
 
 
 class OTSupervisorResponse(BaseModel):
