@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from geoalchemy2 import WKTElement
 
 from app.core.database import get_db
 from app.core.security import get_current_user
@@ -33,7 +34,7 @@ async def crear_sensor(
 
     ubicacion = None
     if payload.lat is not None and payload.lon is not None:
-        ubicacion = func.ST_SetSRID(func.ST_MakePoint(payload.lon, payload.lat), 4326)
+        ubicacion = WKTElement(f"POINT({payload.lon} {payload.lat})", srid=4326)
 
     sensor = Sensor(
         id=payload.point_id,
@@ -43,8 +44,13 @@ async def crear_sensor(
     )
     db.add(sensor)
     await db.commit()
-    await db.refresh(sensor)
-    return sensor
+
+    return SensorResponse(
+        id=sensor.id,
+        point_id=sensor.point_id,
+        sector_id=sensor.sector_id,
+        created_at=sensor.created_at,
+    )
 
 
 @router.get("", response_model=list[SensorResponse], summary="Listar todos los sensores")

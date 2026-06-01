@@ -1,4 +1,5 @@
 import json
+import os
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +11,8 @@ from app.core.security import get_current_user
 from app.models.orden_trabajo import OrdenTrabajo, EstadoOT
 from app.models.usuario import Usuario
 
+_STATIC_DIR = os.path.join(os.path.dirname(__file__), "..", "static")
+
 router = APIRouter(prefix="/analytics", tags=["Analítica"])
 
 
@@ -19,22 +22,12 @@ async def get_kpis(
     db: AsyncSession = Depends(get_db),
 ):
     total_result = await db.execute(select(func.count(OrdenTrabajo.id)))
-    total = total_result.scalar()
+    total = total_result.scalar() or 0
 
     resueltas_result = await db.execute(
         select(func.count(OrdenTrabajo.id)).where(OrdenTrabajo.estado == EstadoOT.RESUELTA)
     )
-    resueltas = resueltas_result.scalar()
-
-    pendientes_result = await db.execute(
-        select(func.count(OrdenTrabajo.id)).where(OrdenTrabajo.estado == EstadoOT.PENDIENTE)
-    )
-    pendientes = pendientes_result.scalar()
-
-    forzadas_result = await db.execute(
-        select(func.count(OrdenTrabajo.id)).where(OrdenTrabajo.estado == EstadoOT.FORZADA)
-    )
-    forzadas = forzadas_result.scalar()
+    resueltas = resueltas_result.scalar() or 0
 
     mttr_result = await db.execute(
         select(
@@ -46,14 +39,30 @@ async def get_kpis(
             OrdenTrabajo.started_at.isnot(None),
         )
     )
-    mttr_minutos = mttr_result.scalar()
+    mttr_raw = mttr_result.scalar()
+
+    pvc_result = await db.execute(
+        select(func.count(OrdenTrabajo.id)).where(
+            func.lower(OrdenTrabajo.material_real).like("%pvc%")
+        )
+    )
+    asbesto_result = await db.execute(
+        select(func.count(OrdenTrabajo.id)).where(
+            func.lower(OrdenTrabajo.material_real).like("%asbest%")
+        )
+    )
+    hdpe_result = await db.execute(
+        select(func.count(OrdenTrabajo.id)).where(
+            func.lower(OrdenTrabajo.material_real).like("%hdpe%")
+        )
+    )
 
     return {
-        "total_ots": total,
-        "resueltas": resueltas,
-        "pendientes": pendientes,
-        "forzadas": forzadas,
-        "mttr_promedio_minutos": round(float(mttr_minutos), 2) if mttr_minutos else None,
+        "mttr_minutos": round(float(mttr_raw), 2) if mttr_raw else 0.0,
+        "eficiencia_porcentaje": round(resueltas / total * 100, 1) if total > 0 else 0.0,
+        "reparaciones_pvc": pvc_result.scalar() or 0,
+        "reparaciones_asbesto": asbesto_result.scalar() or 0,
+        "reparaciones_hdpe": hdpe_result.scalar() or 0,
     }
 
 
@@ -105,3 +114,14 @@ async def get_catastro(
         "total": len(features),
         "features": features,
     }
+
+
+@router.get("/catastro/red", summary="Red de tuberías del catastro (GeoJSON)")
+async def get_catastro_red(current_user: Usuario = Depends(get_current_user)):
+    geojson_path = os.path.abspath(os.path.join(_STATIC_DIR, "catastro_red.geojson"))
+    if os.path.exists(geojson_path):
+        with open(geojson_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        data["total"] = len(data.get("features", []))
+        return data
+    return {"type": "FeatureCollection", "total": 0, "features": []}
