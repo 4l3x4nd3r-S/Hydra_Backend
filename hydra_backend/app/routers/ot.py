@@ -231,9 +231,15 @@ async def close_ot(
     except json.JSONDecodeError:
         raise HTTPException(status_code=422, detail="materiales_usados debe ser un JSON válido.")
 
-    foto_antes_url = await upload_file(foto_antes, "fotos")
-    foto_despues_url = await upload_file(foto_despues, "fotos")
-    firma_url = await upload_file(firma_tecnico, "firmas")
+    async def _safe_upload(file: UploadFile, subfolder: str) -> Optional[str]:
+        try:
+            return await upload_file(file, subfolder)
+        except Exception:
+            return None
+
+    foto_antes_url = await _safe_upload(foto_antes, "fotos")
+    foto_despues_url = await _safe_upload(foto_despues, "fotos")
+    firma_url = await _safe_upload(firma_tecnico, "firmas")
 
     now = datetime.utcnow()
     if presion_verificacion_mca is not None:
