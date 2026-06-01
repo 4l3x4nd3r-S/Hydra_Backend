@@ -204,20 +204,20 @@ async def close_ot(
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
-        select(OrdenTrabajo).where(
-            OrdenTrabajo.id == ot_id,
-            OrdenTrabajo.asignado_a == current_user.id,
-        )
+        select(OrdenTrabajo).where(OrdenTrabajo.id == ot_id)
     )
     ot = result.scalars().first()
 
     if not ot:
         raise HTTPException(status_code=404, detail="Orden de trabajo no encontrada.")
 
-    if ot.estado not in [EstadoOT.EN_PROCESO, EstadoOT.PENDIENTE]:
-        raise HTTPException(
-            status_code=400,
-            detail=f"No se puede cerrar una OT en estado '{ot.estado}'.",
+    # Idempotente: si ya fue cerrada devolver 200 para que el SyncService limpie su SQLite
+    if ot.estado in [EstadoOT.RESUELTA, EstadoOT.FORZADA]:
+        return OTCerradaResponse(
+            ot_id=ot.id,
+            estado=ot.estado,
+            closed_at=ot.closed_at,
+            message="Orden de trabajo ya fue cerrada previamente.",
         )
 
     try:
