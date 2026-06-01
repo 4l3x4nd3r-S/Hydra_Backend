@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
     UPLOADS_DIR: str = "uploads"
+    SUPABASE_URL: str = ""
+    SUPABASE_KEY: str = ""
+    SUPABASE_BUCKET: str = "hydra-files"
 
     @property
     def async_database_url(self) -> str:

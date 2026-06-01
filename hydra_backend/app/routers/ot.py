@@ -1,17 +1,14 @@
 import json
-import os
-import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-import aiofiles
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from geoalchemy2.functions import ST_AsGeoJSON
 from sqlalchemy import select, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.core.database import get_db
+from app.core.storage import upload_file
 from app.core.security import get_current_user
 from app.models.orden_trabajo import OrdenTrabajo, EstadoOT
 from app.models.sensor import LecturaPresion, Sensor
@@ -160,14 +157,6 @@ async def verify_hydraulic_pressure(
     )
 
 
-async def _save_upload(file: UploadFile, subfolder: str) -> str:
-    os.makedirs(f"{settings.UPLOADS_DIR}/{subfolder}", exist_ok=True)
-    ext = os.path.splitext(file.filename)[1] if file.filename else ".bin"
-    filename = f"{uuid.uuid4()}{ext}"
-    path = f"{settings.UPLOADS_DIR}/{subfolder}/{filename}"
-    async with aiofiles.open(path, "wb") as f:
-        await f.write(await file.read())
-    return path
 
 
 @router.post("/{ot_id}/close", response_model=OTCerradaResponse, summary="Cerrar orden de trabajo")
@@ -209,9 +198,9 @@ async def close_ot(
     except json.JSONDecodeError:
         raise HTTPException(status_code=422, detail="materiales_usados debe ser un JSON válido.")
 
-    foto_antes_url = await _save_upload(foto_antes, "fotos")
-    foto_despues_url = await _save_upload(foto_despues, "fotos")
-    firma_url = await _save_upload(firma_tecnico, "firmas")
+    foto_antes_url = await upload_file(foto_antes, "fotos")
+    foto_despues_url = await upload_file(foto_despues, "fotos")
+    firma_url = await upload_file(firma_tecnico, "firmas")
 
     now = datetime.now(timezone.utc)
     estado_final = EstadoOT.FORZADA if presion_verificacion_mca < 15.0 else EstadoOT.RESUELTA
