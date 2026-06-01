@@ -9,3 +9,8 @@ uploads/
 dist/
 build/
 .DS_Store
+
+# Datasets de entrenamiento (no van a producción)
+processed_anomaly_dataset.csv
+processed_anomaly_dataset.csv.gz
+*.csv.gz

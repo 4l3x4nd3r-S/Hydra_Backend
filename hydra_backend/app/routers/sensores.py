@@ -1,15 +1,21 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, desc
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from geoalchemy2 import WKTElement
 
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.core.excel_parser import parse_dickson_xlsx
+from app.core.ml_predictor import detectar_anomalias
 from app.models.sensor import Sensor, LecturaPresion
+from app.models.alerta import Alerta, EstadoAlerta
 from app.models.usuario import Usuario
 from app.schemas.sensor import CrearSensorRequest, SensorResponse
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/sensores", tags=["Sensores"])
 
@@ -137,10 +143,59 @@ async def upload_lecturas(
     insertadas = result.rowcount if result.rowcount >= 0 else len(rows)
     duplicadas = len(rows) - insertadas
 
+    # ── Inferencia ML ────────────────────────────────────────────────────────
+    alertas_creadas = 0
+    anomalias_detectadas = 0
+    if insertadas > 0:
+        try:
+            # Fetch histórico del sensor (últimas 350 lecturas = ~29h de contexto)
+            hist_result = await db.execute(
+                select(
+                    LecturaPresion.timestamp,
+                    LecturaPresion.presion,
+                    LecturaPresion.temperatura,
+                )
+                .where(LecturaPresion.sensor_id == sensor.id)
+                .order_by(desc(LecturaPresion.timestamp))
+                .limit(350 + insertadas)
+            )
+            historial = [
+                {"timestamp": r.timestamp, "presion": r.presion, "temperatura": r.temperatura}
+                for r in reversed(hist_result.all())
+            ]
+
+            anomalias = detectar_anomalias(historial, n_nuevas=insertadas)
+            anomalias_detectadas = len(anomalias)
+
+            if anomalias:
+                # Una sola alerta por upload: la más crítica (mayor probabilidad)
+                peor = max(anomalias, key=lambda x: x["probabilidad"])
+                tipo = "PRESION_BAJA" if peor["presion_mca"] < 10 else "ANOMALIA"
+                nueva_alerta = Alerta(
+                    sensor_id=sensor.id,
+                    tipo=tipo,
+                    nivel=peor["nivel"],
+                    estado=EstadoAlerta.PENDIENTE,
+                    descripcion=(
+                        f"{len(anomalias)} lectura(s) anómala(s) detectadas en {point_id}. "
+                        f"Presión crítica: {peor['presion_mca']} mH2O "
+                        f"(confianza: {peor['probabilidad']:.0%})"
+                    ),
+                    presion_detectada_mca=peor["presion_mca"],
+                )
+                db.add(nueva_alerta)
+                await db.commit()
+                alertas_creadas = 1
+        except Exception as exc:
+            logger.warning("Inferencia ML omitida: %s", exc)
+    # ─────────────────────────────────────────────────────────────────────────
+
     return {
         "sensor_id": sensor.id,
         "point_id": point_id,
         "total_en_archivo": len(rows),
         "insertadas": insertadas,
         "duplicadas_ignoradas": duplicadas,
+        "anomalias_detectadas": anomalias_detectadas,
+        "alertas_creadas": alertas_creadas,
     }
