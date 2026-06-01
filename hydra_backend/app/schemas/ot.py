@@ -39,3 +39,14 @@ class OTCerradaResponse(BaseModel):
     estado: str
     closed_at: datetime
     message: str
+
+
+class OTHistorialResponse(BaseModel):
+    id: int
+    estado: str
+    tipo_hallazgo_real: Optional[str] = None
+    material_real: Optional[str] = None
+    created_at: Optional[datetime] = None
+    closed_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}

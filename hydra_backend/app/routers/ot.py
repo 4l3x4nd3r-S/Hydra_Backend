@@ -18,6 +18,7 @@ from app.schemas.ot import (
     OTIniciadaResponse,
     ControlPresionResponse,
     OTCerradaResponse,
+    OTHistorialResponse,
     UbicacionGPS,
 )
 
@@ -71,6 +72,34 @@ async def get_assigned_ots(
         )
 
     return output
+
+
+@router.get("/history", response_model=list[OTHistorialResponse], summary="Historial de OTs cerradas por el técnico")
+async def get_ot_history(
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(OrdenTrabajo)
+        .where(
+            OrdenTrabajo.asignado_a == current_user.id,
+            OrdenTrabajo.estado.in_([EstadoOT.RESUELTA, EstadoOT.FORZADA]),
+        )
+        .order_by(OrdenTrabajo.closed_at.desc())
+    )
+    ots = result.scalars().all()
+
+    return [
+        OTHistorialResponse(
+            id=ot.id,
+            estado="CERRADA",
+            tipo_hallazgo_real=ot.tipo_hallazgo_real,
+            material_real=ot.material_real,
+            created_at=ot.created_at,
+            closed_at=ot.closed_at,
+        )
+        for ot in ots
+    ]
 
 
 @router.post("/{ot_id}/start", response_model=OTIniciadaResponse, summary="Iniciar temporizador de reparación")
