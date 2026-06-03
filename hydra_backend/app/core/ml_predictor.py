@@ -129,26 +129,39 @@ def detectar_anomalias(historial: list[dict], n_nuevas: int) -> list[dict]:
         df = _compute_features(df)
 
         nuevas = df.tail(n_nuevas).copy()
-        X = nuevas[FEATURE_COLS].values
+        # Pasar DataFrame con nombres para evitar el UserWarning de feature names
+        X = nuevas[FEATURE_COLS]
 
         probas = model.predict_proba(X)[:, 1]
+        logger.info("ML proba max=%.4f min=%.4f sobre %d lecturas nuevas",
+                    float(probas.max()), float(probas.min()), len(probas))
     except Exception as exc:
         logger.error("Error en inferencia ML: %s — usando detector estadístico de fallback", exc)
         return detectar_anomalias_estadistica(historial, n_nuevas)
 
-    anomalias = []
+    anomalias_ml = []
     for i, (_, row) in enumerate(nuevas.iterrows()):
         p = float(probas[i])
         if p >= ANOMALY_THRESHOLD:
             nivel = "CRITICA" if p >= 0.85 else ("ALTA" if p >= 0.75 else "MEDIA")
-            anomalias.append({
+            anomalias_ml.append({
                 "timestamp": row["timestamp"],
                 "presion_mca": round(float(row["Pressure"]), 3),
                 "probabilidad": round(p, 4),
                 "nivel": nivel,
             })
 
-    return anomalias
+    # Complementar con detector estadístico para valores claramente anómalos
+    # que el modelo podría pasar por alto (ej: presión 0.0)
+    anomalias_stat = detectar_anomalias_estadistica(historial, n_nuevas)
+
+    # Unir resultados sin duplicar timestamps
+    timestamps_ml = {a["timestamp"] for a in anomalias_ml}
+    for a in anomalias_stat:
+        if a["timestamp"] not in timestamps_ml:
+            anomalias_ml.append(a)
+
+    return anomalias_ml
 
 
 def detectar_anomalias_estadistica(historial: list[dict], n_nuevas: int) -> list[dict]:
