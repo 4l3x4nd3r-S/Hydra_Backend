@@ -39,10 +39,13 @@ def _get_model():
     global _model
     if _model is None:
         if os.path.exists(_MODEL_PATH):
-            _model = joblib.load(_MODEL_PATH)
-            logger.info("Modelo ML cargado: %s", _MODEL_PATH)
+            try:
+                _model = joblib.load(_MODEL_PATH)
+                logger.info("Modelo ML cargado OK: %s", _MODEL_PATH)
+            except Exception as exc:
+                logger.error("ERROR al cargar modelo ML (posible incompatibilidad sklearn): %s", exc, exc_info=True)
         else:
-            logger.warning("Modelo ML no encontrado en %s", _MODEL_PATH)
+            logger.error("Modelo ML NO encontrado en ruta: %s", _MODEL_PATH)
     return _model
 
 

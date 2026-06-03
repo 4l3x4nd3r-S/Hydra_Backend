@@ -193,7 +193,7 @@ async def upload_lecturas(
                 )
                 .where(LecturaPresion.sensor_id == sensor.id)
                 .order_by(desc(LecturaPresion.timestamp))
-                .limit(350 + insertadas)
+                .limit(8640 + insertadas)  # 30 días de contexto histórico
             )
             historial = [
                 {"timestamp": r.timestamp, "presion": r.presion, "temperatura": r.temperatura}
