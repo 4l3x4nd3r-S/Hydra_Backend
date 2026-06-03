@@ -104,23 +104,24 @@ async def upload_lecturas(
     original_filename = file.filename
     size_kb = round(len(contents) / 1024, 2)
 
-    # ── Sin point_id: solo guardar y confirmar ────────────────────────────────
-    if point_id is None:
-        try:
-            ext = original_filename.rsplit(".", 1)[-1] if "." in original_filename else "xlsx"
-            storage_path = f"excel-lecturas/{uuid.uuid4()}.{ext}"
-            supabase = get_supabase()
-            supabase.storage.from_(settings.SUPABASE_BUCKET).upload(
-                path=storage_path,
-                file=contents,
-                file_options={
-                    "content-type": file.content_type or "application/octet-stream",
-                    "upsert": "true",
-                },
-            )
-        except Exception as exc:
-            logger.warning("No se pudo guardar en storage: %s", exc)
+    # Guardar siempre en storage para trazabilidad
+    try:
+        ext = original_filename.rsplit(".", 1)[-1] if "." in original_filename else "xlsx"
+        storage_path = f"excel-lecturas/{uuid.uuid4()}.{ext}"
+        supabase = get_supabase()
+        supabase.storage.from_(settings.SUPABASE_BUCKET).upload(
+            path=storage_path,
+            file=contents,
+            file_options={
+                "content-type": file.content_type or "application/octet-stream",
+                "upsert": "true",
+            },
+        )
+    except Exception as exc:
+        logger.warning("No se pudo guardar en storage: %s", exc)
 
+    # ── Sin point_id: solo confirmar ─────────────────────────────────────────
+    if point_id is None:
         return {
             "success": True,
             "message": "Archivo subido exitosamente",
