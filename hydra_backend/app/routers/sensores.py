@@ -204,23 +204,37 @@ async def upload_lecturas(
             anomalias_detectadas = len(anomalias)
 
             if anomalias:
-                peor = max(anomalias, key=lambda x: x["probabilidad"])
-                tipo = "PRESION_BAJA" if peor["presion_mca"] < 10 else "ANOMALIA"
-                nueva_alerta = Alerta(
-                    sensor_id=sensor.id,
-                    tipo=tipo,
-                    nivel=peor["nivel"],
-                    estado=EstadoAlerta.PENDIENTE,
-                    descripcion=(
-                        f"{len(anomalias)} lectura(s) anómala(s) detectadas en {point_id}. "
-                        f"Presión crítica: {peor['presion_mca']} mH2O "
-                        f"(confianza: {peor['probabilidad']:.0%})"
-                    ),
-                    presion_detectada_mca=peor["presion_mca"],
-                )
-                db.add(nueva_alerta)
+                from datetime import datetime as _dt, timedelta as _td
+                _plazos = {"CRITICA": 2, "ALTA": 5, "MEDIA": 10}
+
+                # Seleccionar: 3 CRITICA + 2 ALTA + 2 MEDIA (las de mayor probabilidad por nivel)
+                por_nivel = {"CRITICA": [], "ALTA": [], "MEDIA": []}
+                for a in sorted(anomalias, key=lambda x: x["probabilidad"], reverse=True):
+                    nivel = a["nivel"]
+                    if nivel in por_nivel and len(por_nivel[nivel]) < {"CRITICA": 3, "ALTA": 2, "MEDIA": 2}[nivel]:
+                        por_nivel[nivel].append(a)
+
+                seleccionadas = por_nivel["CRITICA"] + por_nivel["ALTA"] + por_nivel["MEDIA"]
+                for a in seleccionadas:
+                    tipo = "PRESION_BAJA" if a["presion_mca"] < 10 else "ANOMALIA"
+                    dias = _plazos.get(a["nivel"], 5)
+                    nueva_alerta = Alerta(
+                        sensor_id=sensor.id,
+                        tipo=tipo,
+                        nivel=a["nivel"],
+                        estado=EstadoAlerta.PENDIENTE,
+                        descripcion=(
+                            f"Anomalía detectada en {point_id} — "
+                            f"Presión: {a['presion_mca']} mH2O "
+                            f"(confianza: {a['probabilidad']:.0%}) "
+                            f"| Total anómalas en archivo: {len(anomalias)}"
+                        ),
+                        presion_detectada_mca=a["presion_mca"],
+                        plazo_atencion_at=_dt.utcnow() + _td(days=dias),
+                    )
+                    db.add(nueva_alerta)
                 await db.commit()
-                alertas_creadas = 1
+                alertas_creadas = len(seleccionadas)
         except Exception as exc:
             logger.warning("Inferencia ML omitida: %s", exc)
     # ─────────────────────────────────────────────────────────────────────────

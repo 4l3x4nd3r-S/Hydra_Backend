@@ -27,5 +27,6 @@ class AlertaResponse(BaseModel):
     ot_id: Optional[int] = None
     created_at: datetime
     atendida_at: Optional[datetime] = None
+    plazo_atencion_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}

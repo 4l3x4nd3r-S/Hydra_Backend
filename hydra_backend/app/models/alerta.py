@@ -40,6 +40,7 @@ class Alerta(Base):
     ot_id = Column(Integer, ForeignKey("ordenes_trabajo.id"), nullable=True)
     created_at = Column(DateTime, default=func.now())
     atendida_at = Column(DateTime, nullable=True)
+    plazo_atencion_at = Column(DateTime, nullable=True)
 
     sensor = relationship("Sensor")
     ot = relationship("OrdenTrabajo")
