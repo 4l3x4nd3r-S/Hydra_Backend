@@ -16,11 +16,15 @@ def parse_dickson_xlsx(file_bytes: bytes) -> list[dict]:
     """
     wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True, read_only=True)
 
-    # Buscar la hoja que tenga 'Fecha' y 'Presión' en la fila 7
+    # Buscar la hoja de datos que tenga 'Fecha' en la fila 7
+    # Se saltean chart sheets (no tienen método .cell)
     ws = None
     for sheet_name in wb.sheetnames:
         candidate = wb[sheet_name]
-        for col_val in (candidate.cell(row=_HEADER_ROW, column=c).value for c in range(1, 10)):
+        if not hasattr(candidate, "cell"):
+            continue
+        for c in range(1, 10):
+            col_val = candidate.cell(row=_HEADER_ROW, column=c).value
             if col_val and "echa" in str(col_val).lower():
                 ws = candidate
                 break
