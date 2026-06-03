@@ -25,6 +25,8 @@ class AlertaResponse(BaseModel):
     descripcion: Optional[str] = None
     presion_detectada_mca: Optional[float] = None
     ot_id: Optional[int] = None
+    tecnico_id: Optional[int] = None
+    tecnico_nombre: Optional[str] = None
     created_at: datetime
     atendida_at: Optional[datetime] = None
     plazo_atencion_at: Optional[datetime] = None

@@ -47,14 +47,41 @@ async def list_alertas(
     current_user: Usuario = Depends(require_supervisor),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(Alerta).order_by(Alerta.created_at.desc())
+    query = (
+        select(Alerta)
+        .options(
+            selectinload(Alerta.ot).selectinload(OrdenTrabajo.tecnico)
+        )
+        .order_by(Alerta.created_at.desc())
+    )
     if estado:
         query = query.where(Alerta.estado == estado.upper())
     else:
         query = query.where(Alerta.estado == EstadoAlerta.PENDIENTE)
 
     result = await db.execute(query)
-    return result.scalars().all()
+    alertas = result.scalars().all()
+
+    output = []
+    for a in alertas:
+        tecnico = a.ot.tecnico if a.ot and a.ot.tecnico else None
+        output.append(AlertaResponse(
+            id=a.id,
+            sensor_id=a.sensor_id,
+            sector_id=a.sector_id,
+            tipo=a.tipo,
+            nivel=a.nivel,
+            estado=a.estado,
+            descripcion=a.descripcion,
+            presion_detectada_mca=float(a.presion_detectada_mca) if a.presion_detectada_mca else None,
+            ot_id=a.ot_id,
+            tecnico_id=tecnico.id if tecnico else None,
+            tecnico_nombre=tecnico.nombre if tecnico else None,
+            created_at=a.created_at,
+            atendida_at=a.atendida_at,
+            plazo_atencion_at=a.plazo_atencion_at,
+        ))
+    return output
 
 
 @router.post(

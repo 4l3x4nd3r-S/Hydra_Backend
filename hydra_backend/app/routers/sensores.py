@@ -220,6 +220,7 @@ async def upload_lecturas(
                     dias = _plazos.get(a["nivel"], 5)
                     nueva_alerta = Alerta(
                         sensor_id=sensor.id,
+                        sector_id=sensor.sector_id,
                         tipo=tipo,
                         nivel=a["nivel"],
                         estado=EstadoAlerta.PENDIENTE,
