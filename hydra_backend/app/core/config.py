@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     UPLOADS_DIR: str = "uploads"
     SUPABASE_URL: str = ""
     SUPABASE_KEY: str = ""
+    SUPABASE_SERVICE_KEY: str = ""
     SUPABASE_BUCKET: str = "hydra-files"
 
     @property
@@ -21,6 +22,5 @@ class Settings(BaseSettings):
         elif url.startswith("postgresql://"):
             url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
         return url
-
 
 settings = Settings()

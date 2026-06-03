@@ -1,4 +1,6 @@
 import logging
+import uuid
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,8 +8,10 @@ from sqlalchemy import select, desc
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from geoalchemy2 import WKTElement
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.core.storage import get_supabase
 from app.core.excel_parser import parse_dickson_xlsx
 from app.core.ml_predictor import detectar_anomalias
 from app.models.sensor import Sensor, LecturaPresion
@@ -85,8 +89,8 @@ async def list_sensores(
     summary="Cargar lecturas desde archivo Excel del datalogger DICKSON",
 )
 async def upload_lecturas(
-    point_id: str = Form(..., description="Código del punto de medición (ej: P-61)"),
-    file: UploadFile = File(..., description="Archivo .xlsx exportado del datalogger DICKSON"),
+    file: UploadFile = File(..., description="Archivo .xlsx exportado del datalogger"),
+    point_id: Optional[str] = Form(None, description="Código del punto de medición (ej: P-61). Opcional."),
     current_user: Usuario = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -95,6 +99,37 @@ async def upload_lecturas(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="El archivo debe ser .xlsx o .xls.",
         )
+
+    contents = await file.read()
+    original_filename = file.filename
+    size_kb = round(len(contents) / 1024, 2)
+
+    # ── Sin point_id: solo guardar y confirmar ────────────────────────────────
+    if point_id is None:
+        try:
+            ext = original_filename.rsplit(".", 1)[-1] if "." in original_filename else "xlsx"
+            storage_path = f"excel-lecturas/{uuid.uuid4()}.{ext}"
+            supabase = get_supabase()
+            supabase.storage.from_(settings.SUPABASE_BUCKET).upload(
+                path=storage_path,
+                file=contents,
+                file_options={
+                    "content-type": file.content_type or "application/octet-stream",
+                    "upsert": "true",
+                },
+            )
+        except Exception as exc:
+            logger.warning("No se pudo guardar en storage: %s", exc)
+
+        return {
+            "success": True,
+            "message": "Archivo subido exitosamente",
+            "data": {
+                "filename": original_filename,
+                "size": f"{size_kb} KB",
+            },
+        }
+    # ─────────────────────────────────────────────────────────────────────────
 
     sensor_result = await db.execute(
         select(Sensor).where(Sensor.point_id == point_id)
@@ -106,7 +141,6 @@ async def upload_lecturas(
             detail=f"No se encontró ningún sensor con point_id '{point_id}'. Verifique el código del punto.",
         )
 
-    contents = await file.read()
     try:
         readings = parse_dickson_xlsx(contents)
     except ValueError as e:
@@ -148,7 +182,6 @@ async def upload_lecturas(
     anomalias_detectadas = 0
     if insertadas > 0:
         try:
-            # Fetch histórico del sensor (últimas 350 lecturas = ~29h de contexto)
             hist_result = await db.execute(
                 select(
                     LecturaPresion.timestamp,
@@ -168,7 +201,6 @@ async def upload_lecturas(
             anomalias_detectadas = len(anomalias)
 
             if anomalias:
-                # Una sola alerta por upload: la más crítica (mayor probabilidad)
                 peor = max(anomalias, key=lambda x: x["probabilidad"])
                 tipo = "PRESION_BAJA" if peor["presion_mca"] < 10 else "ANOMALIA"
                 nueva_alerta = Alerta(
