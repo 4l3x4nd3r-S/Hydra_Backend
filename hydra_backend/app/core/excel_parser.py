@@ -15,7 +15,23 @@ def parse_dickson_xlsx(file_bytes: bytes) -> list[dict]:
     La presión ya viene en mH2O (equivalente a mca), no requiere conversión.
     """
     wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True, read_only=True)
-    ws = wb.active
+
+    # Buscar la hoja que tenga 'Fecha' y 'Presión' en la fila 7
+    ws = None
+    for sheet_name in wb.sheetnames:
+        candidate = wb[sheet_name]
+        for col_val in (candidate.cell(row=_HEADER_ROW, column=c).value for c in range(1, 10)):
+            if col_val and "echa" in str(col_val).lower():
+                ws = candidate
+                break
+        if ws is not None:
+            break
+
+    if ws is None:
+        raise ValueError(
+            "No se encontró ninguna hoja con columna 'Fecha' en la fila 7. "
+            "Verifique que el archivo sea exportado directamente del datalogger DICKSON."
+        )
 
     fecha_col = tiempo_col = temp_col = presion_col = None
     readings = []
