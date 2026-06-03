@@ -1,5 +1,4 @@
 import logging
-import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
@@ -106,8 +105,11 @@ async def upload_lecturas(
 
     # Guardar siempre en storage para trazabilidad
     try:
+        from datetime import datetime as _dt
         ext = original_filename.rsplit(".", 1)[-1] if "." in original_filename else "xlsx"
-        storage_path = f"excel-lecturas/{uuid.uuid4()}.{ext}"
+        ts = _dt.utcnow().strftime("%Y%m%d_%H%M%S")
+        prefix = point_id if point_id else "sin-punto"
+        storage_path = f"excel-lecturas/{prefix}_{ts}_{original_filename}"
         supabase = get_supabase()
         supabase.storage.from_(settings.SUPABASE_BUCKET).upload(
             path=storage_path,
