@@ -117,7 +117,11 @@ def detectar_anomalias(historial: list[dict], n_nuevas: int) -> list[dict]:
         Lista de anomalías: [{timestamp, presion_mca, probabilidad, nivel}]
     """
     model = _get_model()
-    if model is None or not historial or n_nuevas <= 0:
+    if model is None:
+        logger.warning("Modelo ML no disponible — usando detector estadístico de fallback")
+        return detectar_anomalias_estadistica(historial, n_nuevas)
+
+    if not historial or n_nuevas <= 0:
         return []
 
     try:
@@ -129,8 +133,8 @@ def detectar_anomalias(historial: list[dict], n_nuevas: int) -> list[dict]:
 
         probas = model.predict_proba(X)[:, 1]
     except Exception as exc:
-        logger.error("Error en inferencia ML: %s", exc)
-        return []
+        logger.error("Error en inferencia ML: %s — usando detector estadístico de fallback", exc)
+        return detectar_anomalias_estadistica(historial, n_nuevas)
 
     anomalias = []
     for i, (_, row) in enumerate(nuevas.iterrows()):
@@ -145,3 +149,47 @@ def detectar_anomalias(historial: list[dict], n_nuevas: int) -> list[dict]:
             })
 
     return anomalias
+
+
+def detectar_anomalias_estadistica(historial: list[dict], n_nuevas: int) -> list[dict]:
+    """
+    Detector estadístico de fallback — usado cuando el modelo ML no carga.
+    Compara las nuevas lecturas contra la media/std del historial previo.
+    """
+    if not historial or n_nuevas <= 0:
+        return []
+
+    try:
+        df = pd.DataFrame(historial)
+        df["presion"] = df["presion"].astype(float)
+
+        # Baseline: lecturas previas a las nuevas
+        previas = df.iloc[:-n_nuevas] if len(df) > n_nuevas else df
+        if len(previas) >= 10:
+            media = previas["presion"].mean()
+            std = previas["presion"].std()
+        else:
+            media = df["presion"].mean()
+            std = df["presion"].std()
+
+        std = max(std, 0.5)
+        umbral = max(media - 3 * std, 5.0)
+
+        nuevas = df.tail(n_nuevas)
+        anomalias = []
+        for _, row in nuevas.iterrows():
+            p = float(row["presion"])
+            if p < umbral:
+                desviaciones = (media - p) / std
+                prob = round(min(0.97, 0.60 + (desviaciones - 3) * 0.05), 4)
+                nivel = "CRITICA" if p < 5 else ("ALTA" if p < 10 else "MEDIA")
+                anomalias.append({
+                    "timestamp": row["timestamp"],
+                    "presion_mca": round(p, 3),
+                    "probabilidad": prob,
+                    "nivel": nivel,
+                })
+        return anomalias
+    except Exception as exc:
+        logger.error("Error en detector estadístico: %s", exc)
+        return []
