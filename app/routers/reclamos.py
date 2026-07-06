@@ -55,7 +55,7 @@ async def crear_reclamo(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Solo los usuarios con rol SUPERVISOR pueden registrar reclamos.",
         )
-    data = payload.model_dump()
+    data = payload.model_dump(exclude_unset=True)
     data["usuario_id"] = current_user.id
     reclamo = Reclamo(**data)
     db.add(reclamo)

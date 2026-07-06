@@ -8,8 +8,8 @@ from pydantic import BaseModel, Field, field_validator
 FORMATO_RECLAMO = Literal["Anexo 6", "Formato 1"]
 
 CANAL_ENTRADA_RECLAMO = Literal[
-    "Presencial (Módulo Comercial)",
-    "Call Center (3er Piso)",
+    "Presencial",
+    "Call Center",
     "Llamada Directa",
 ]
 
@@ -34,6 +34,7 @@ class CrearReclamoRequest(BaseModel):
     telefono: str = Field(pattern=r"^\d{9}$")
     email: str = Field(pattern=r"^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$")
     numero_medidor: str = Field(pattern=r"^\d{1,8}$")
+    fecha_registro: Optional[datetime] = None
     latitud: Optional[float] = None
     longitud: Optional[float] = None
 
