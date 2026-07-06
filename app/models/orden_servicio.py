@@ -1,7 +1,13 @@
-from sqlalchemy import Column, Integer, String, Float, Text, DateTime, ForeignKey, func, JSON
+from sqlalchemy import Column, Integer, String, Float, Text, DateTime, ForeignKey, func, JSON, Date
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
+
+class OsSecuencia(Base):
+    __tablename__ = "os_secuencia"
+
+    fecha = Column(Date, primary_key=True)
+    contador = Column(Integer, default=1)
 
 
 class OrdenServicio(Base):
