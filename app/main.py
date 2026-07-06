@@ -56,5 +56,6 @@ app.include_router(uploads.router, prefix="/api/v1")
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 @app.get("/health", tags=["Sistema"], summary="Estado del servidor")
+@app.head("/health", tags=["Sistema"], summary="Estado del servidor (UptimeRobot)")
 async def health_check():
     return {"status": "ok", "service": "Hydra"}
