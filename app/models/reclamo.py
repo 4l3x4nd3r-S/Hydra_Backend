@@ -27,6 +27,10 @@ class Reclamo(Base):
             "(numero_medidor ~ '^[0-9]{7}$' AND numero_medidor <> '0000000')",
             name="ck_reclamos_numero_medidor_7_digitos",
         ),
+        CheckConstraint(
+            "telefono IS NULL OR telefono ~ '^9[0-9]{8}$'",
+            name="ck_reclamos_telefono_peru",
+        ),
     )
 
     id = Column(Integer, primary_key=True, index=True)

@@ -44,7 +44,6 @@ hydra_backend/
 │   │   ├── ot.py
 │   │   └── analytics.py
 │   └── main.py               # Instancia FastAPI y middlewares
-├── uploads/                  # Archivos subidos (fotos, firmas)
 ├── .env                      # Variables de entorno (no subir a git)
 ├── alembic.ini
 ├── Procfile                  # Para despliegue en Railway
@@ -141,7 +140,6 @@ Documentación interactiva en `http://localhost:8000/docs`
    - `SECRET_KEY`
    - `ALGORITHM`
    - `ACCESS_TOKEN_EXPIRE_MINUTES`
-   - `UPLOADS_DIR`
 5. Railway asigna `DATABASE_URL` automáticamente
 
 ---
@@ -154,4 +152,3 @@ Documentación interactiva en `http://localhost:8000/docs`
 | `SECRET_KEY` | Clave para firmar tokens JWT | Mínimo 32 caracteres aleatorios |
 | `ALGORITHM` | Algoritmo JWT | `HS256` |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Expiración del token en minutos | `480` (8 horas) |
-| `UPLOADS_DIR` | Carpeta para archivos subidos | `uploads` |

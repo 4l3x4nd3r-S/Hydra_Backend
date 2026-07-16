@@ -2,7 +2,7 @@ import unittest
 
 from pydantic import ValidationError
 
-from app.schemas.reclamo import CrearReclamoRequest
+from app.schemas.reclamo import ActualizarReclamoRequest, CrearReclamoRequest
 
 
 DATOS_BASE = {
@@ -35,6 +35,29 @@ class ReclamoTiposPorFormatoTest(unittest.TestCase):
                     formato="Anexo 6",
                     tipo_problema="OP-1",
                 )
+
+    def test_telefono_requiere_nueve_digitos_y_empezar_con_nueve(self):
+        for telefono in ("876543210", "98765432", "9876543210", "9A7654321"):
+            with self.subTest(telefono=telefono), self.assertRaises(ValidationError):
+                CrearReclamoRequest(
+                    **{**DATOS_BASE, "telefono": telefono},
+                    formato="Anexo 6",
+                    tipo_problema="OP-1",
+                )
+
+        payload = CrearReclamoRequest(
+            **DATOS_BASE,
+            formato="Anexo 6",
+            tipo_problema="OP-1",
+        )
+        self.assertEqual(payload.telefono, "987654321")
+
+    def test_actualizacion_de_telefono_tambien_debe_empezar_con_nueve(self):
+        with self.assertRaises(ValidationError):
+            ActualizarReclamoRequest(telefono="876543210")
+
+        payload = ActualizarReclamoRequest(telefono="912345678")
+        self.assertEqual(payload.telefono, "912345678")
 
     def test_anexo_6_admite_op_y_rechaza_formato_1(self):
         payload = CrearReclamoRequest(

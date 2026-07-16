@@ -55,7 +55,7 @@ class CrearReclamoRequest(BaseModel):
     descripcion: str = Field(min_length=1, max_length=500)
     nombre_solicitante: str = Field(min_length=1, max_length=100)
     direccion: str = Field(min_length=1, max_length=255)
-    telefono: str = Field(pattern=r"^\d{9}$")
+    telefono: str = Field(pattern=r"^9[0-9]{8}$")
     email: str = Field(pattern=r"^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$")
     numero_medidor: str = Field(pattern=r"^\d{7}$")
     fecha_registro: Optional[datetime] = None
@@ -101,7 +101,7 @@ class ActualizarReclamoRequest(BaseModel):
     descripcion: Optional[str] = Field(default=None, max_length=500)
     nombre_solicitante: Optional[str] = Field(default=None, max_length=100)
     direccion: Optional[str] = Field(default=None, max_length=255)
-    telefono: Optional[str] = Field(default=None, pattern=r"^\d{9}$")
+    telefono: Optional[str] = Field(default=None, pattern=r"^9[0-9]{8}$")
     email: Optional[str] = Field(
         default=None, pattern=r"^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$"
     )

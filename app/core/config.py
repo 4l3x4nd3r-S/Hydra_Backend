@@ -11,7 +11,6 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     LOG_LEVEL: str = "INFO"
     ENVIRONMENT: str = "dev"
-    UPLOADS_DIR: str = "uploads"
     SUPABASE_URL: str = ""
     SUPABASE_KEY: str = ""
     SUPABASE_SERVICE_KEY: str = ""
