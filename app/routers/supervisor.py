@@ -1,7 +1,5 @@
 from datetime import datetime, timezone
-from typing import Optional
-
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -13,6 +11,7 @@ from app.models.cuadrilla import Cuadrilla, CuadrillaPersonal, RolEnCuadrilla
 from app.models.elemento_red import ElementoRed
 from app.models.orden_servicio import OrdenServicio
 from app.routers.cuadrillas import build_detalle
+from app.services.orden_servicio_snapshot import cuadrilla_para_respuesta
 from app.schemas.supervisor import TecnicoResponse, CrearOrdenServicioRequest
 from app.schemas.orden_servicio import OrdenServicioResponse
 
@@ -32,7 +31,6 @@ async def require_supervisor(current_user: Usuario = Depends(get_current_user)) 
 
 @router.get("/tecnicos", response_model=list[TecnicoResponse], summary="Listar personal disponible")
 async def list_tecnicos(
-    area: Optional[str] = Query(None, description="Filtrar por área: DISTRIBUCION, MANTENIMIENTO"),
     current_user: Usuario = Depends(require_supervisor),
     db: AsyncSession = Depends(get_db),
 ):
@@ -41,36 +39,38 @@ async def list_tecnicos(
         .where(
             Usuario.rol == RolUsuario.GASFITERO,
             Usuario.activo == True,
+            Usuario.area == AreaUsuario.MANTENIMIENTO,
         )
     )
-    if area:
-        query = query.where(Usuario.area == area.upper())
-    query = query.order_by(Usuario.area, Usuario.nombre)
+    query = query.order_by(Usuario.nombre)
     result = await db.execute(query)
     return result.scalars().all()
 
 
 @router.get("/tecnicos-disponibles", response_model=list[TecnicoResponse], summary="Listar personal NO asignado a ninguna cuadrilla")
 async def list_tecnicos_disponibles(
-    area: Optional[str] = Query(None, description="Filtrar por área: DISTRIBUCION, MANTENIMIENTO"),
     current_user: Usuario = Depends(require_supervisor),
     db: AsyncSession = Depends(get_db),
 ):
     ocupados_subq = (
         select(CuadrillaPersonal.usuario_id)
-        .where(CuadrillaPersonal.rol_en_cuadrilla.in_([RolEnCuadrilla.LIDER, RolEnCuadrilla.APOYO]))
+        .where(CuadrillaPersonal.rol_en_cuadrilla.in_([
+            RolEnCuadrilla.LIDER,
+            RolEnCuadrilla.APOYO,
+            RolEnCuadrilla.CHOFER,
+            RolEnCuadrilla.OPERADOR,
+        ]))
     )
     query = (
         select(Usuario)
         .where(
             Usuario.rol == RolUsuario.GASFITERO,
             Usuario.activo == True,
+            Usuario.area == AreaUsuario.MANTENIMIENTO,
             Usuario.id.notin_(ocupados_subq),
         )
     )
-    if area:
-        query = query.where(Usuario.area == area.upper())
-    query = query.order_by(Usuario.area, Usuario.nombre)
+    query = query.order_by(Usuario.nombre)
     result = await db.execute(query)
     return result.scalars().all()
 
@@ -124,6 +124,7 @@ async def list_ordenes_servicio(
             selectinload(OrdenServicio.cuadrilla)
                 .selectinload(Cuadrilla.personal)
                 .selectinload(CuadrillaPersonal.usuario),
+            selectinload(OrdenServicio.responsable),
             selectinload(OrdenServicio.reclamo),
         )
         .order_by(OrdenServicio.created_at.desc())
@@ -131,14 +132,10 @@ async def list_ordenes_servicio(
     ordenes = result.scalars().all()
     
     def _build_os_response(o: OrdenServicio) -> dict:
-        cuadrilla_data = None
-        if o.cuadrilla:
-            detalle = build_detalle(o.cuadrilla)
-            cuadrilla_data = detalle.model_dump()
+        cuadrilla_data = cuadrilla_para_respuesta(o)
             
         reclamo_data = None
         if o.reclamo:
-            # simple dict matching ReclamoMinimoResponse
             reclamo_data = {
                 "id": o.reclamo.id,
                 "formato": o.reclamo.formato,
@@ -154,6 +151,15 @@ async def list_ordenes_servicio(
                 "email": o.reclamo.email,
                 "fecha_registro": o.reclamo.fecha_registro,
             }
+
+        responsable_data = None
+        if o.responsable:
+            responsable_data = {
+                "id": o.responsable.id,
+                "nombre": o.responsable.nombre,
+                "codigo_empleado": o.responsable.codigo_empleado,
+                "cargo": o.responsable.cargo.value if o.responsable.cargo else None,
+            }
             
         return {
             "id": o.id,
@@ -161,6 +167,7 @@ async def list_ordenes_servicio(
             "reclamo_id": o.reclamo_id,
             "supervisor_id": o.supervisor_id,
             "cuadrilla_id": o.cuadrilla_id,
+            "responsable_id": o.responsable_id,
             "sector_id": o.sector_id,
             "fecha_programacion": o.fecha_programacion,
             "fecha_ejecucion_inicio": o.fecha_ejecucion_inicio,
@@ -180,6 +187,7 @@ async def list_ordenes_servicio(
             "fotos_solucion_urls": getattr(o, "fotos_solucion_urls", None) or [],
             "reclamo": reclamo_data,
             "cuadrilla": cuadrilla_data,
+            "responsable": responsable_data,
         }
         
     return [_build_os_response(o) for o in ordenes]
@@ -211,6 +219,7 @@ async def crear_orden_servicio(
         ot = await service.crear_desde_reclamo(
             reclamo_id=payload.reclamo_id,
             cuadrilla_id=payload.cuadrilla_id,
+            responsable_id=payload.responsable_id,
             supervisor_id=payload.supervisor_id,
             fecha_programacion=fecha,
             actor=current_user,

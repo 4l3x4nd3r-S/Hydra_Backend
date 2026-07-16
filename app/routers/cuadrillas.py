@@ -5,11 +5,18 @@ from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.models.usuario import Usuario, CargoUsuario
-from app.models.cuadrilla import Cuadrilla, CuadrillaPersonal, RolEnCuadrilla
+from app.models.usuario import Usuario, CargoUsuario, RolUsuario, AreaUsuario
+from app.models.cuadrilla import (
+    Cuadrilla,
+    CuadrillaPersonal,
+    RolEnCuadrilla,
+    cuadrilla_numero_sequence,
+    formatear_codigo_cuadrilla,
+)
 from app.schemas.cuadrilla import (
     CrearCuadrillaRequest, ActualizarCuadrillaRequest,
     CuadrillaResponse, CuadrillaDetalleResponse, PersonaCuadrilla,
+    PersonalRequest,
 )
 
 router = APIRouter(prefix="/cuadrillas", tags=["Cuadrillas"])
@@ -87,30 +94,39 @@ async def crear_cuadrilla(
     current_user: Usuario = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    ids_personal = {
+        payload.personal.lider_id,
+        *payload.personal.apoyos_ids,
+        *([payload.personal.chofer_id] if payload.personal.chofer_id else []),
+        *([payload.personal.operador_id] if payload.personal.operador_id else []),
+    }
+    await _validar_personal_mantenimiento(db, ids_personal)
+
+    numero_result = await db.execute(select(cuadrilla_numero_sequence.next_value()))
+    numero_cuadrilla = numero_result.scalar_one()
+
     cuadrilla = Cuadrilla(
-        codigo_grupo=payload.codigo_grupo,
+        codigo_grupo=formatear_codigo_cuadrilla(numero_cuadrilla),
         especialidad=payload.especialidad,
     )
     db.add(cuadrilla)
     await db.flush()
 
-    if payload.personal:
-        _agregar_personal_sync(db, cuadrilla.id, payload.personal)
+    _agregar_personal_sync(db, cuadrilla.id, payload.personal)
 
-        if payload.personal.chofer_id:
-            usuario = await db.get(Usuario, payload.personal.chofer_id)
-            if usuario is not None:
-                usuario.cargo = CargoUsuario.CHOFER
+    if payload.personal.chofer_id:
+        usuario = await db.get(Usuario, payload.personal.chofer_id)
+        if usuario is not None:
+            usuario.cargo = CargoUsuario.CHOFER_CAMIONETA
 
-        if payload.personal.operador_id:
-            usuario = await db.get(Usuario, payload.personal.operador_id)
-            if usuario is not None:
-                usuario.cargo = CargoUsuario.OPERADOR_MAQUINARIA
+    if payload.personal.operador_id:
+        usuario = await db.get(Usuario, payload.personal.operador_id)
+        if usuario is not None:
+            usuario.cargo = CargoUsuario.OPERADOR_RETROEXCAVADORA
 
-        if payload.personal.lider_id:
-            usuario = await db.get(Usuario, payload.personal.lider_id)
-            if usuario is not None:
-                usuario.cargo = CargoUsuario.GASFITERO_PRINCIPAL
+    usuario = await db.get(Usuario, payload.personal.lider_id)
+    if usuario is not None:
+        usuario.cargo = CargoUsuario.GASFITERO_PRINCIPAL
 
     await db.commit()
 
@@ -148,6 +164,23 @@ def _agregar_personal_sync(db, cuadrilla_id: int, personal):
         ))
 
 
+async def _validar_personal_mantenimiento(db: AsyncSession, ids: set[int]) -> None:
+    result = await db.execute(select(Usuario).where(Usuario.id.in_(ids)))
+    usuarios = result.scalars().all()
+    if len(usuarios) != len(ids):
+        raise HTTPException(status_code=400, detail="Uno o más integrantes no existen.")
+    if any(
+        usuario.rol != RolUsuario.GASFITERO
+        or usuario.area != AreaUsuario.MANTENIMIENTO
+        or not usuario.activo
+        for usuario in usuarios
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Las cuadrillas solo admiten personal activo de Mantenimiento.",
+        )
+
+
 @router.patch("/{cuadrilla_id}", response_model=CuadrillaResponse, summary="Actualizar cuadrilla")
 async def actualizar_cuadrilla(
     cuadrilla_id: int,
@@ -167,6 +200,99 @@ async def actualizar_cuadrilla(
     await db.commit()
     await db.refresh(cuadrilla)
     return cuadrilla
+
+
+@router.patch(
+    "/{cuadrilla_id}/personal",
+    response_model=CuadrillaDetalleResponse,
+    summary="Actualizar todo el personal de una cuadrilla",
+)
+async def actualizar_personal_cuadrilla(
+    cuadrilla_id: int,
+    payload: PersonalRequest,
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Cuadrilla)
+        .options(selectinload(Cuadrilla.personal))
+        .where(Cuadrilla.id == cuadrilla_id)
+    )
+    cuadrilla = result.scalars().first()
+    if not cuadrilla:
+        raise HTTPException(status_code=404, detail="Cuadrilla no encontrada.")
+
+    if cuadrilla.especialidad == "Agua" and payload.chofer_id is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="Las cuadrillas de Agua no admiten el rol Chofer.",
+        )
+    if cuadrilla.especialidad == "Desagüe" and payload.operador_id is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="Las cuadrillas de Desagüe no admiten el rol Operador.",
+        )
+
+    ids_personal = {
+        payload.lider_id,
+        *payload.apoyos_ids,
+        *([payload.chofer_id] if payload.chofer_id is not None else []),
+        *([payload.operador_id] if payload.operador_id is not None else []),
+    }
+    await _validar_personal_mantenimiento(db, ids_personal)
+
+    ocupados_result = await db.execute(
+        select(CuadrillaPersonal.usuario_id).where(
+            CuadrillaPersonal.usuario_id.in_(ids_personal),
+            CuadrillaPersonal.cuadrilla_id != cuadrilla_id,
+        )
+    )
+    ocupados = ocupados_result.scalars().all()
+    if ocupados:
+        raise HTTPException(
+            status_code=409,
+            detail="Uno o más integrantes ya pertenecen a otra cuadrilla.",
+        )
+
+    lider_anterior = next(
+        (
+            integrante.usuario_id
+            for integrante in cuadrilla.personal
+            if integrante.rol_en_cuadrilla == RolEnCuadrilla.LIDER
+        ),
+        None,
+    )
+
+    for integrante in list(cuadrilla.personal):
+        await db.delete(integrante)
+    await db.flush()
+    _agregar_personal_sync(db, cuadrilla_id, payload)
+
+    if lider_anterior is not None and lider_anterior != payload.lider_id:
+        usuario_anterior = await db.get(Usuario, lider_anterior)
+        if (
+            usuario_anterior is not None
+            and usuario_anterior.cargo == CargoUsuario.GASFITERO_PRINCIPAL
+        ):
+            usuario_anterior.cargo = CargoUsuario.GASFITERO
+
+    nuevo_lider = await db.get(Usuario, payload.lider_id)
+    if nuevo_lider is not None:
+        nuevo_lider.cargo = CargoUsuario.GASFITERO_PRINCIPAL
+
+    await db.commit()
+
+    result = await db.execute(
+        select(Cuadrilla)
+        .options(
+            selectinload(Cuadrilla.personal).selectinload(
+                CuadrillaPersonal.usuario
+            )
+        )
+        .where(Cuadrilla.id == cuadrilla_id)
+        .execution_options(populate_existing=True)
+    )
+    return build_detalle(result.scalars().first())
 
 
 @router.delete(
@@ -204,9 +330,7 @@ async def agregar_personal(
     if not cuadrilla.scalars().first():
         raise HTTPException(status_code=404, detail="Cuadrilla no encontrada.")
 
-    usuario = await db.execute(select(Usuario).where(Usuario.id == usuario_id))
-    if not usuario.scalars().first():
-        raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+    await _validar_personal_mantenimiento(db, {usuario_id})
 
     existing = await db.execute(
         select(CuadrillaPersonal).where(

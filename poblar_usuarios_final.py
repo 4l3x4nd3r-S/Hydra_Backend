@@ -7,14 +7,8 @@ from app.models.usuario import Usuario, RolUsuario, CargoUsuario, AreaUsuario
 from app.core.security import hash_password
 
 usuarios_data = [
-    {"codigo": "SUP001", "nombre": "Supervisor1", "rol": RolUsuario.SUPERVISOR, "cargo": None, "area": None},
-    {"codigo": "DIS001", "nombre": "Cristobal Castillo Cahuana", "rol": RolUsuario.GASFITERO, "cargo": CargoUsuario.OPERADOR_RETROEXCAVADORA, "area": AreaUsuario.DISTRIBUCION},
-    {"codigo": "DIS002", "nombre": "Saul Diaz Barrios", "rol": RolUsuario.GASFITERO, "cargo": CargoUsuario.GASFITERO, "area": AreaUsuario.DISTRIBUCION},
-    {"codigo": "DIS005", "nombre": "Victor Guerra Velasque", "rol": RolUsuario.GASFITERO, "cargo": CargoUsuario.GASFITERO, "area": AreaUsuario.DISTRIBUCION},
-    {"codigo": "DIS007", "nombre": "Fernando", "rol": RolUsuario.GASFITERO, "cargo": CargoUsuario.GASFITERO, "area": AreaUsuario.DISTRIBUCION},
-    {"codigo": "DIS008", "nombre": "Ormeño", "rol": RolUsuario.GASFITERO, "cargo": CargoUsuario.GASFITERO, "area": AreaUsuario.DISTRIBUCION},
+    {"codigo": "SUP001", "nombre": "ALFREDO VARGAS PERALTA", "rol": RolUsuario.SUPERVISOR, "cargo": None, "area": AreaUsuario.MANTENIMIENTO},
     {"codigo": "MAN001", "nombre": "Teodoro Condori Huaman", "rol": RolUsuario.GASFITERO, "cargo": CargoUsuario.CHOFER_CAMIONETA, "area": AreaUsuario.MANTENIMIENTO},
-    {"codigo": "MAN002", "nombre": "Alberto Vargas Peralta", "rol": RolUsuario.GASFITERO, "cargo": CargoUsuario.GASFITERO, "area": AreaUsuario.MANTENIMIENTO},
     {"codigo": "MAN003", "nombre": "Daniel Huesembe Ventura", "rol": RolUsuario.GASFITERO, "cargo": CargoUsuario.GASFITERO, "area": AreaUsuario.MANTENIMIENTO},
     {"codigo": "MAN004", "nombre": "Manuel Cardenas Campana", "rol": RolUsuario.GASFITERO, "cargo": CargoUsuario.GASFITERO, "area": AreaUsuario.MANTENIMIENTO},
     {"codigo": "MAN005", "nombre": "Ernesto Caceres Huacac", "rol": RolUsuario.GASFITERO, "cargo": CargoUsuario.GASFITERO, "area": AreaUsuario.MANTENIMIENTO},
@@ -25,9 +19,6 @@ usuarios_data = [
     {"codigo": "MAN010", "nombre": "Jonas Huaman Ccallahuallpa", "rol": RolUsuario.GASFITERO, "cargo": CargoUsuario.GASFITERO, "area": AreaUsuario.MANTENIMIENTO},
     {"codigo": "MAN011", "nombre": "Ricardo Conza Singuña", "rol": RolUsuario.GASFITERO, "cargo": CargoUsuario.GASFITERO, "area": AreaUsuario.MANTENIMIENTO},
     {"codigo": "MAN012", "nombre": "Yordy Dancuart Guerra", "rol": RolUsuario.GASFITERO, "cargo": CargoUsuario.GASFITERO, "area": AreaUsuario.MANTENIMIENTO},
-    {"codigo": "DIS004", "nombre": "Alejandro Salgado Quispe", "rol": RolUsuario.GASFITERO, "cargo": CargoUsuario.GASFITERO_PRINCIPAL, "area": AreaUsuario.DISTRIBUCION},
-    {"codigo": "DIS003", "nombre": "Esteban Chavez Zegarra", "rol": RolUsuario.GASFITERO, "cargo": CargoUsuario.GASFITERO_PRINCIPAL, "area": AreaUsuario.DISTRIBUCION},
-    {"codigo": "DIS006", "nombre": "Emanuel Addiso Joseph Inuma Osorio", "rol": RolUsuario.GASFITERO, "cargo": CargoUsuario.GASFITERO_PRINCIPAL, "area": AreaUsuario.DISTRIBUCION},
 ]
 
 async def seed_users():

@@ -1,7 +1,7 @@
 import pytest
 import pytest_asyncio
 from unittest.mock import AsyncMock, patch, MagicMock
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
@@ -29,7 +29,7 @@ async def setup_datos(db_session: AsyncSession):
             """
             INSERT INTO reclamos (id, formato, codigo_solicitud, canal_entrada, tipo_problema,
                 estado, descripcion, direccion, fecha_registro)
-            VALUES (10, 'F-001', 'CS-001', 'TELEFONO', 'FUGA', 'PENDIENTE', 'Fuga visible', 'Av. Peru 123', now())
+            VALUES (10, 'Formato 1', '00010', 'TELEFONO', 'FUGA', 'PENDIENTE', 'Fuga visible', 'Av. Peru 123', now())
             ON CONFLICT (id) DO NOTHING
             """
         )
@@ -66,6 +66,7 @@ async def test_crear_os_desde_reclamo_exitoso(db_session: AsyncSession, setup_da
     ot = await service.crear_desde_reclamo(
         reclamo_id=10,
         cuadrilla_id=4,
+        responsable_id=None,
         supervisor_id=1,
         fecha_programacion=None,
         actor=actor_obj,
@@ -74,7 +75,8 @@ async def test_crear_os_desde_reclamo_exitoso(db_session: AsyncSession, setup_da
 
     assert ot.id is not None
     assert ot.numero_orden is not None
-    assert ot.numero_orden.startswith("OS-")
+    assert len(ot.numero_orden) == 7
+    assert ot.numero_orden.isdigit()
     assert ot.reclamo_id == 10
     assert ot.cuadrilla_id == 4
     assert ot.supervisor_id == 1
@@ -89,12 +91,6 @@ async def test_crear_os_desde_reclamo_exitoso(db_session: AsyncSession, setup_da
         text("SELECT accion FROM auditoria_eventos WHERE entidad = 'orden_servicio'")
     )
     assert auditoria_result.scalar_one() == "OS_CREADA"
-
-    secuencia_result = await db_session.execute(
-        text("SELECT count(*) FROM os_secuencia WHERE fecha = :fecha"),
-        {"fecha": date.today()},
-    )
-    assert secuencia_result.scalar_one() == 1
 
 
 @pytest.mark.asyncio
@@ -117,6 +113,7 @@ async def test_crear_os_reclamo_inexistente(db_session: AsyncSession, setup_dato
         await service.crear_desde_reclamo(
             reclamo_id=999,
             cuadrilla_id=4,
+            responsable_id=None,
             supervisor_id=1,
             fecha_programacion=None,
             actor=actor,
@@ -143,6 +140,7 @@ async def test_crear_os_cuadrilla_inexistente(db_session: AsyncSession, setup_da
         await service.crear_desde_reclamo(
             reclamo_id=10,
             cuadrilla_id=999,
+            responsable_id=None,
             supervisor_id=1,
             fecha_programacion=None,
             actor=actor,
@@ -168,6 +166,7 @@ async def test_crear_os_reclamo_con_os_activa(db_session: AsyncSession, setup_da
     await service.crear_desde_reclamo(
         reclamo_id=10,
         cuadrilla_id=4,
+        responsable_id=None,
         supervisor_id=1,
         fecha_programacion=None,
         actor=actor,
@@ -178,6 +177,7 @@ async def test_crear_os_reclamo_con_os_activa(db_session: AsyncSession, setup_da
         await service.crear_desde_reclamo(
             reclamo_id=10,
             cuadrilla_id=4,
+            responsable_id=None,
             supervisor_id=1,
             fecha_programacion=None,
             actor=actor,
@@ -185,7 +185,7 @@ async def test_crear_os_reclamo_con_os_activa(db_session: AsyncSession, setup_da
 
 
 @pytest.mark.asyncio
-async def test_numeracion_correlativa_diaria(db_session: AsyncSession, setup_datos):
+async def test_numeracion_correlativa_global(db_session: AsyncSession, setup_datos):
     from app.models.usuario import Usuario
 
     actor_result = await db_session.execute(text("SELECT * FROM usuarios WHERE id = 1"))
@@ -204,7 +204,7 @@ async def test_numeracion_correlativa_diaria(db_session: AsyncSession, setup_dat
             """
             INSERT INTO reclamos (id, formato, codigo_solicitud, canal_entrada, tipo_problema,
                 estado, descripcion, direccion, fecha_registro)
-            VALUES (11, 'F-002', 'CS-002', 'TELEFONO', 'FUGA', 'PENDIENTE', 'Otra fuga', 'Av. Lima 456', now())
+            VALUES (11, 'Formato 1', '00011', 'TELEFONO', 'FUGA', 'PENDIENTE', 'Otra fuga', 'Av. Lima 456', now())
             ON CONFLICT (id) DO NOTHING
             """
         )
@@ -216,6 +216,7 @@ async def test_numeracion_correlativa_diaria(db_session: AsyncSession, setup_dat
     ot1 = await service.crear_desde_reclamo(
         reclamo_id=10,
         cuadrilla_id=4,
+        responsable_id=None,
         supervisor_id=1,
         fecha_programacion=None,
         actor=actor,
@@ -225,6 +226,7 @@ async def test_numeracion_correlativa_diaria(db_session: AsyncSession, setup_dat
     ot2 = await service.crear_desde_reclamo(
         reclamo_id=11,
         cuadrilla_id=4,
+        responsable_id=None,
         supervisor_id=1,
         fecha_programacion=None,
         actor=actor,
@@ -232,4 +234,4 @@ async def test_numeracion_correlativa_diaria(db_session: AsyncSession, setup_dat
     await db_session.commit()
 
     assert ot1.numero_orden != ot2.numero_orden
-    assert ot2.numero_orden.endswith("0002")
+    assert int(ot2.numero_orden) == int(ot1.numero_orden) + 1

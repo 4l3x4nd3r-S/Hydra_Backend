@@ -13,17 +13,14 @@ class RolUsuario(str, enum.Enum):
 
 
 class CargoUsuario(str, enum.Enum):
+    GASFITERO = "GASFITERO"
     GASFITERO_PRINCIPAL = "GASFITERO_PRINCIPAL"
     GASFITERO_APOYO = "GASFITERO_APOYO"
-    CHOFER = "CHOFER"
-    OPERADOR_MAQUINARIA = "OPERADOR_MAQUINARIA"
-    GASFITERO = "GASFITERO"
     CHOFER_CAMIONETA = "CHOFER_CAMIONETA"
     OPERADOR_RETROEXCAVADORA = "OPERADOR_RETROEXCAVADORA"
 
 
 class AreaUsuario(str, enum.Enum):
-    DISTRIBUCION = "DISTRIBUCION"
     MANTENIMIENTO = "MANTENIMIENTO"
 
 
@@ -44,4 +41,7 @@ class Usuario(Base):
     reclamos = relationship("Reclamo", back_populates="usuario")
     ordenes_supervisadas = relationship(
         "OrdenServicio", back_populates="supervisor", foreign_keys="OrdenServicio.supervisor_id"
+    )
+    ordenes_asignadas = relationship(
+        "OrdenServicio", back_populates="responsable", foreign_keys="OrdenServicio.responsable_id"
     )

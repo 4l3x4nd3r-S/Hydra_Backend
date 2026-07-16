@@ -1,17 +1,22 @@
 import logging
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.orden_servicio import OrdenServicio
+from app.models.orden_servicio import OrdenServicio, numero_orden_sequence
 from app.models.reclamo import Reclamo
 from app.models.cuadrilla import Cuadrilla, CuadrillaPersonal
-from app.models.usuario import Usuario
+from app.models.usuario import Usuario, RolUsuario
 from app.models.auditoria import AuditoriaEvento
 
 logger = logging.getLogger("hydra.services.os")
+
+ESPECIALIDAD_POR_FORMATO_RECLAMO = {
+    "Anexo 6": "Desagüe",
+    "Formato 1": "Agua",
+}
 
 
 class OrdenServicioService:
@@ -25,14 +30,22 @@ class OrdenServicioService:
         *,
         reclamo_id: int,
         cuadrilla_id: int | None,
+        responsable_id: int | None,
         supervisor_id: int | None,
         fecha_programacion: datetime | None,
         actor: Usuario,
     ) -> OrdenServicio:
+        if (cuadrilla_id is not None) == (responsable_id is not None):
+            raise ValueError(
+                "Debe asignarse a una cuadrilla o a un responsable individual, pero no a ambos."
+            )
+
         reclamo = await self._validar_reclamo_sin_os_activa(reclamo_id)
 
         if cuadrilla_id is not None:
-            await self._validar_cuadrilla_existe(cuadrilla_id)
+            await self._validar_cuadrilla_compatible(cuadrilla_id, reclamo.formato)
+        if responsable_id is not None:
+            await self._validar_responsable_gasfitero(responsable_id)
 
         numero_orden = await self._generar_numero_orden()
 
@@ -41,6 +54,7 @@ class OrdenServicioService:
             reclamo_id=reclamo_id,
             supervisor_id=supervisor_id or actor.id,
             cuadrilla_id=cuadrilla_id,
+            responsable_id=responsable_id,
             sector_id=None,
             fecha_programacion=fecha_programacion,
             estado_orden="ASIGNADO",
@@ -61,6 +75,7 @@ class OrdenServicioService:
                 "numero_orden": numero_orden,
                 "reclamo_id": reclamo_id,
                 "cuadrilla_id": cuadrilla_id,
+                "responsable_id": responsable_id,
                 "supervisor_id": supervisor_id or actor.id,
                 "reclamo_estado_anterior": estado_anterior_reclamo,
                 "reclamo_estado_nuevo": "ASIGNADO",
@@ -78,6 +93,7 @@ class OrdenServicioService:
                 selectinload(OrdenServicio.cuadrilla)
                     .selectinload(Cuadrilla.personal)
                     .selectinload(CuadrillaPersonal.usuario),
+                selectinload(OrdenServicio.responsable),
                 selectinload(OrdenServicio.supervisor),
             )
             .where(OrdenServicio.id == ot.id)
@@ -93,24 +109,12 @@ class OrdenServicioService:
         return ot_cargado
 
     async def _generar_numero_orden(self) -> str:
-        hoy = date.today()
-        fecha_str = hoy.strftime("%Y%m%d")
-
         result = await self._db.execute(
-            text(
-                """
-                INSERT INTO os_secuencia (fecha, contador)
-                VALUES (:fecha, 1)
-                ON CONFLICT (fecha)
-                DO UPDATE SET contador = os_secuencia.contador + 1
-                RETURNING contador
-                """
-            ),
-            {"fecha": hoy},
+            select(numero_orden_sequence.next_value())
         )
-        contador = result.scalar_one()
+        correlativo = result.scalar_one()
 
-        return f"OS-{fecha_str}-{contador:04d}"
+        return f"{correlativo:07d}"
 
     async def _validar_reclamo_sin_os_activa(self, reclamo_id: int) -> Reclamo:
         result = await self._db.execute(
@@ -131,9 +135,40 @@ class OrdenServicioService:
 
         return reclamo
 
-    async def _validar_cuadrilla_existe(self, cuadrilla_id: int) -> None:
+    async def _validar_cuadrilla_compatible(
+        self,
+        cuadrilla_id: int,
+        formato_reclamo: str | None,
+    ) -> None:
         result = await self._db.execute(
             select(Cuadrilla).where(Cuadrilla.id == cuadrilla_id)
         )
-        if not result.scalars().first():
+        cuadrilla = result.scalars().first()
+        if not cuadrilla:
             raise ValueError("Cuadrilla no encontrada.")
+
+        especialidad_requerida = ESPECIALIDAD_POR_FORMATO_RECLAMO.get(
+            formato_reclamo or ""
+        )
+        if especialidad_requerida is None:
+            raise ValueError(
+                "El formato del reclamo no tiene una especialidad configurada."
+            )
+
+        especialidad_cuadrilla = (cuadrilla.especialidad or "").strip()
+        if especialidad_cuadrilla.casefold() != especialidad_requerida.casefold():
+            raise ValueError(
+                f"Los reclamos con formato {formato_reclamo} solo pueden "
+                f"asignarse a cuadrillas de {especialidad_requerida}."
+            )
+
+    async def _validar_responsable_gasfitero(self, usuario_id: int) -> None:
+        result = await self._db.execute(
+            select(Usuario).where(
+                Usuario.id == usuario_id,
+                Usuario.rol == RolUsuario.GASFITERO,
+                Usuario.activo == True,
+            )
+        )
+        if not result.scalars().first():
+            raise ValueError("El responsable no es un gasfitero activo.")

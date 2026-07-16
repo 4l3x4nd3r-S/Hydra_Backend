@@ -1,8 +1,29 @@
 import enum
-from sqlalchemy import Column, Integer, String, ForeignKey, Enum
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    ForeignKey,
+    Enum,
+    Sequence,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
+
+
+cuadrilla_numero_sequence = Sequence(
+    "cuadrilla_numero_seq",
+    start=1,
+    minvalue=1,
+    maxvalue=999_999,
+    metadata=Base.metadata,
+)
+
+
+def formatear_codigo_cuadrilla(numero: int) -> str:
+    return f"Cuadrilla {numero:03d}"
 
 
 class RolEnCuadrilla(str, enum.Enum):
@@ -14,6 +35,9 @@ class RolEnCuadrilla(str, enum.Enum):
 
 class Cuadrilla(Base):
     __tablename__ = "cuadrillas"
+    __table_args__ = (
+        UniqueConstraint("codigo_grupo", name="uq_cuadrillas_codigo_grupo"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     codigo_grupo = Column(String(50), nullable=False)

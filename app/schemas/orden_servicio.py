@@ -9,6 +9,7 @@ class CrearOrdenServicioRequest(BaseModel):
     reclamo_id: Optional[int] = None
     supervisor_id: Optional[int] = None
     cuadrilla_id: Optional[int] = None
+    responsable_id: Optional[int] = None
     sector_id: Optional[int] = None
     fecha_programacion: Optional[datetime] = None
 
@@ -18,6 +19,7 @@ class ActualizarOrdenServicioRequest(BaseModel):
     reclamo_id: Optional[int] = None
     supervisor_id: Optional[int] = None
     cuadrilla_id: Optional[int] = None
+    responsable_id: Optional[int] = None
     sector_id: Optional[int] = None
     fecha_programacion: Optional[datetime] = None
     estado_orden: Optional[str] = None
@@ -77,12 +79,22 @@ class CuadrillaMinimaResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ResponsableMinimoResponse(BaseModel):
+    id: int
+    nombre: str
+    codigo_empleado: str
+    cargo: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class OrdenServicioResponse(BaseModel):
     id: int
     numero_orden: Optional[str] = None
     reclamo_id: Optional[int] = None
     supervisor_id: Optional[int] = None
     cuadrilla_id: Optional[int] = None
+    responsable_id: Optional[int] = None
     sector_id: Optional[int] = None
     fecha_programacion: Optional[datetime] = None
     fecha_ejecucion_inicio: Optional[datetime] = None
@@ -103,5 +115,6 @@ class OrdenServicioResponse(BaseModel):
 
     reclamo: Optional[ReclamoMinimoResponse] = None
     cuadrilla: Optional[CuadrillaMinimaResponse] = None
+    responsable: Optional[ResponsableMinimoResponse] = None
 
     model_config = ConfigDict(from_attributes=True)
