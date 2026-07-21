@@ -52,7 +52,7 @@ def _tecnico_response(
     cargos: dict[str, str],
 ) -> TecnicoResponse:
     pertenencia = next(
-        (item for item in usuario.cuadrillas if item.cuadrilla is not None),
+        (item for item in usuario.cuadrillas if item.cuadrilla is not None and item.cuadrilla.activo),
         None,
     )
     rol = pertenencia.rol_en_cuadrilla if pertenencia is not None else None
@@ -135,11 +135,15 @@ async def list_tecnicos_disponibles(
 ):
     ocupados_subq = (
         select(CuadrillaPersonal.usuario_id)
-        .where(CuadrillaPersonal.rol_en_cuadrilla.in_([
-            RolEnCuadrilla.LIDER,
-            RolEnCuadrilla.APOYO,
-            RolEnCuadrilla.CHOFER,
-        ]))
+        .join(Cuadrilla)
+        .where(
+            CuadrillaPersonal.rol_en_cuadrilla.in_([
+                RolEnCuadrilla.LIDER,
+                RolEnCuadrilla.APOYO,
+                RolEnCuadrilla.CHOFER,
+            ]),
+            Cuadrilla.activo == True
+        )
     )
     query = (
         select(Usuario)
@@ -173,6 +177,7 @@ async def list_cuadrillas_full(
 ):
     result = await db.execute(
         select(Cuadrilla)
+        .where(Cuadrilla.activo == True)
         .options(selectinload(Cuadrilla.personal).selectinload(CuadrillaPersonal.usuario))
         .order_by(Cuadrilla.codigo_grupo)
     )
