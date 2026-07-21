@@ -39,7 +39,7 @@ def _build_os_response(o: OrdenServicio) -> dict:
             "descripcion": o.reclamo.descripcion,
             "nombre_solicitante": o.reclamo.nombre_solicitante,
             "direccion": o.reclamo.direccion,
-            "numero_medidor": o.reclamo.numero_medidor,
+            "numero_suministro": o.reclamo.numero_suministro,
             "telefono": o.reclamo.telefono,
             "email": o.reclamo.email,
             "fecha_registro": o.reclamo.fecha_registro,

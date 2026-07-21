@@ -1,8 +1,11 @@
 import unittest
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock
 
 from pydantic import ValidationError
 
 from app.schemas.reclamo import ActualizarReclamoRequest, CrearReclamoRequest
+from app.services.catalogo_service import validar_reclamo_catalogo
 
 
 DATOS_BASE = {
@@ -13,7 +16,7 @@ DATOS_BASE = {
     "direccion": "Dirección de prueba",
     "telefono": "987654321",
     "email": "usuario@prueba.com",
-    "numero_medidor": "1234567",
+    "numero_suministro": "1234567",
 }
 
 
@@ -27,11 +30,11 @@ class ReclamoTiposPorFormatoTest(unittest.TestCase):
                     tipo_problema="OP-1",
                 )
 
-    def test_numero_medidor_requiere_siete_digitos_no_nulos(self):
+    def test_numero_suministro_requiere_siete_digitos_no_nulos(self):
         for numero in ("123456", "12345678", "123A567", "0000000"):
             with self.subTest(numero=numero), self.assertRaises(ValidationError):
                 CrearReclamoRequest(
-                    **{**DATOS_BASE, "numero_medidor": numero},
+                    **{**DATOS_BASE, "numero_suministro": numero},
                     formato="Anexo 6",
                     tipo_problema="OP-1",
                 )
@@ -59,28 +62,32 @@ class ReclamoTiposPorFormatoTest(unittest.TestCase):
         payload = ActualizarReclamoRequest(telefono="912345678")
         self.assertEqual(payload.telefono, "912345678")
 
-    def test_anexo_6_admite_op_y_rechaza_formato_1(self):
-        payload = CrearReclamoRequest(
-            **DATOS_BASE, formato="Anexo 6", tipo_problema="OP-1"
-        )
-        self.assertEqual(payload.tipo_problema, "OP-1")
 
-        with self.assertRaisesRegex(ValidationError, "no corresponde"):
-            CrearReclamoRequest(
-                **DATOS_BASE, formato="Anexo 6", tipo_problema="B1"
-            )
 
-    def test_formato_1_admite_catalogo_nuevo_y_rechaza_op(self):
-        payload = CrearReclamoRequest(
-            **DATOS_BASE,
-            formato="Formato 1",
-            tipo_problema="REPOSICIÓN DE TUBERIA DE CONCRETO A PVC - DESAGÜE",
-        )
-        self.assertIn("DESAGÜE", payload.tipo_problema)
+class ReclamoCatalogoTest(unittest.IsolatedAsyncioTestCase):
+    async def test_tipo_de_problema_debe_corresponder_al_formato(self):
+        opciones = [
+            SimpleNamespace(grupo="FORMATO_RECLAMO", codigo="Anexo 6"),
+            SimpleNamespace(grupo="CANAL_RECLAMO", codigo="Presencial"),
+            SimpleNamespace(
+                grupo="TIPO_PROBLEMA",
+                codigo="B1",
+                padre_codigo="Formato 1",
+            ),
+            SimpleNamespace(grupo="ESTADO_RECLAMO", codigo="PENDIENTE"),
+        ]
+        resultado = MagicMock()
+        resultado.scalars.return_value.all.return_value = opciones
+        db = MagicMock()
+        db.execute = AsyncMock(return_value=resultado)
 
-        with self.assertRaisesRegex(ValidationError, "no corresponde"):
-            CrearReclamoRequest(
-                **DATOS_BASE, formato="Formato 1", tipo_problema="OP-1"
+        with self.assertRaisesRegex(ValueError, "no corresponde"):
+            await validar_reclamo_catalogo(
+                db,
+                formato="Anexo 6",
+                canal="Presencial",
+                tipo_problema="B1",
+                estado="PENDIENTE",
             )
 
 

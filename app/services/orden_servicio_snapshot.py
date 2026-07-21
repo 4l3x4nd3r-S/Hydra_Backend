@@ -18,7 +18,6 @@ def construir_snapshot_cuadrilla(cuadrilla: Cuadrilla | None) -> dict[str, Any] 
         "lider": None,
         "apoyos": [],
         "chofer": None,
-        "operador": None,
     }
 
     for integrante in cuadrilla.personal:
@@ -37,8 +36,6 @@ def construir_snapshot_cuadrilla(cuadrilla: Cuadrilla | None) -> dict[str, Any] 
             snapshot["apoyos"].append(persona)
         elif rol == RolEnCuadrilla.CHOFER:
             snapshot["chofer"] = persona
-        elif rol == RolEnCuadrilla.OPERADOR:
-            snapshot["operador"] = persona
 
     return snapshot
 

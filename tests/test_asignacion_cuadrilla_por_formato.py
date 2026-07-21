@@ -2,24 +2,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
-from app.services.orden_servicio_service import (
-    ESPECIALIDAD_POR_FORMATO_RECLAMO,
-    OrdenServicioService,
-)
-
-
-class AsignacionCuadrillaPorFormatoTest(unittest.TestCase):
-    def test_anexo_6_requiere_desague(self):
-        self.assertEqual(
-            ESPECIALIDAD_POR_FORMATO_RECLAMO["Anexo 6"],
-            "Desagüe",
-        )
-
-    def test_formato_1_requiere_agua(self):
-        self.assertEqual(
-            ESPECIALIDAD_POR_FORMATO_RECLAMO["Formato 1"],
-            "Agua",
-        )
+from app.services.orden_servicio_service import OrdenServicioService
 
 
 class ValidacionCuadrillaPorFormatoTest(unittest.IsolatedAsyncioTestCase):
@@ -29,11 +12,13 @@ class ValidacionCuadrillaPorFormatoTest(unittest.IsolatedAsyncioTestCase):
             especialidad="Agua"
         )
         db = MagicMock()
-        db.execute = AsyncMock(return_value=resultado)
+        catalogo = MagicMock()
+        catalogo.scalar_one_or_none.return_value = "Alcantarillado"
+        db.execute = AsyncMock(side_effect=[resultado, catalogo])
 
         servicio = OrdenServicioService(db)
 
-        with self.assertRaisesRegex(ValueError, "solo pueden.*Desagüe"):
+        with self.assertRaisesRegex(ValueError, "solo pueden.*Alcantarillado"):
             await servicio._validar_cuadrilla_compatible(1, "Anexo 6")
 
     async def test_admite_cuadrilla_de_agua_para_formato_1(self):
@@ -42,7 +27,9 @@ class ValidacionCuadrillaPorFormatoTest(unittest.IsolatedAsyncioTestCase):
             especialidad="Agua"
         )
         db = MagicMock()
-        db.execute = AsyncMock(return_value=resultado)
+        catalogo = MagicMock()
+        catalogo.scalar_one_or_none.return_value = "Agua"
+        db.execute = AsyncMock(side_effect=[resultado, catalogo])
 
         servicio = OrdenServicioService(db)
 

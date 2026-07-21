@@ -15,12 +15,23 @@ class Settings(BaseSettings):
     SUPABASE_KEY: str = ""
     SUPABASE_SERVICE_KEY: str = ""
     SUPABASE_BUCKET: str = "hydra-files"
+    CORS_ORIGINS: str = ""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         if self.ENVIRONMENT == "prod":
             if not self.SECRET_KEY:
                 raise ValueError("SECRET_KEY es obligatorio en entorno prod")
+            if not self.cors_origins:
+                raise ValueError("CORS_ORIGINS es obligatorio en entorno prod")
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return [
+            origin.strip()
+            for origin in self.CORS_ORIGINS.split(",")
+            if origin.strip()
+        ]
 
     @property
     def async_database_url(self) -> str:

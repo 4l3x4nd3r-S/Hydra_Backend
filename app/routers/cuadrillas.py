@@ -18,15 +18,23 @@ from app.schemas.cuadrilla import (
     CuadrillaResponse, CuadrillaDetalleResponse, PersonaCuadrilla,
     PersonalRequest,
 )
+from app.services.catalogo_service import (
+    GRUPO_ESPECIALIDAD,
+    validar_codigo_catalogo,
+    GRUPO_FUNCION_CUADRILLA,
+    mapa_etiquetas,
+)
 
 router = APIRouter(prefix="/cuadrillas", tags=["Cuadrillas"])
 
 
-def build_detalle(cuadrilla: Cuadrilla) -> CuadrillaDetalleResponse:
+def build_detalle(
+    cuadrilla: Cuadrilla,
+    funciones: dict[str, str],
+) -> CuadrillaDetalleResponse:
     lider = None
     apoyos = []
     chofer = None
-    operador = None
 
     for cp in cuadrilla.personal:
         p = PersonaCuadrilla(
@@ -34,6 +42,11 @@ def build_detalle(cuadrilla: Cuadrilla) -> CuadrillaDetalleResponse:
             codigo_empleado=cp.usuario.codigo_empleado,
             nombre=cp.usuario.nombre,
             rol_en_cuadrilla=cp.rol_en_cuadrilla.value if cp.rol_en_cuadrilla else "",
+            funcion_visible=funciones.get(
+                cp.rol_en_cuadrilla.value,
+                cp.rol_en_cuadrilla.value,
+            ),
+            es_principal=cp.rol_en_cuadrilla == RolEnCuadrilla.LIDER,
         )
         match cp.rol_en_cuadrilla:
             case RolEnCuadrilla.LIDER:
@@ -42,8 +55,6 @@ def build_detalle(cuadrilla: Cuadrilla) -> CuadrillaDetalleResponse:
                 apoyos.append(p)
             case RolEnCuadrilla.CHOFER:
                 chofer = p
-            case RolEnCuadrilla.OPERADOR:
-                operador = p
 
     return CuadrillaDetalleResponse(
         id=cuadrilla.id,
@@ -52,7 +63,6 @@ def build_detalle(cuadrilla: Cuadrilla) -> CuadrillaDetalleResponse:
         lider=lider,
         apoyos=apoyos,
         chofer=chofer,
-        operador=operador,
     )
 
 
@@ -80,7 +90,8 @@ async def get_cuadrilla(
     if not cuadrilla:
         raise HTTPException(status_code=404, detail="Cuadrilla no encontrada.")
 
-    return build_detalle(cuadrilla)
+    funciones = await mapa_etiquetas(db, GRUPO_FUNCION_CUADRILLA)
+    return build_detalle(cuadrilla, funciones)
 
 
 @router.post(
@@ -94,11 +105,11 @@ async def crear_cuadrilla(
     current_user: Usuario = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    await validar_codigo_catalogo(db, GRUPO_ESPECIALIDAD, payload.especialidad)
     ids_personal = {
         payload.personal.lider_id,
         *payload.personal.apoyos_ids,
         *([payload.personal.chofer_id] if payload.personal.chofer_id else []),
-        *([payload.personal.operador_id] if payload.personal.operador_id else []),
     }
     await _validar_personal_mantenimiento(db, ids_personal)
 
@@ -119,11 +130,6 @@ async def crear_cuadrilla(
         if usuario is not None:
             usuario.cargo = CargoUsuario.CHOFER_CAMIONETA
 
-    if payload.personal.operador_id:
-        usuario = await db.get(Usuario, payload.personal.operador_id)
-        if usuario is not None:
-            usuario.cargo = CargoUsuario.OPERADOR_RETROEXCAVADORA
-
     usuario = await db.get(Usuario, payload.personal.lider_id)
     if usuario is not None:
         usuario.cargo = CargoUsuario.GASFITERO_PRINCIPAL
@@ -135,7 +141,8 @@ async def crear_cuadrilla(
         .options(selectinload(Cuadrilla.personal).selectinload(CuadrillaPersonal.usuario))
         .where(Cuadrilla.id == cuadrilla.id)
     )
-    return build_detalle(result.scalars().first())
+    funciones = await mapa_etiquetas(db, GRUPO_FUNCION_CUADRILLA)
+    return build_detalle(result.scalars().first(), funciones)
 
 
 def _agregar_personal_sync(db, cuadrilla_id: int, personal):
@@ -155,12 +162,6 @@ def _agregar_personal_sync(db, cuadrilla_id: int, personal):
             cuadrilla_id=cuadrilla_id,
             usuario_id=personal.chofer_id,
             rol_en_cuadrilla=RolEnCuadrilla.CHOFER,
-        ))
-    if personal.operador_id:
-        db.add(CuadrillaPersonal(
-            cuadrilla_id=cuadrilla_id,
-            usuario_id=personal.operador_id,
-            rol_en_cuadrilla=RolEnCuadrilla.OPERADOR,
         ))
 
 
@@ -194,6 +195,10 @@ async def actualizar_cuadrilla(
         raise HTTPException(status_code=404, detail="Cuadrilla no encontrada.")
 
     update_data = payload.model_dump(exclude_unset=True)
+    if payload.especialidad is not None:
+        await validar_codigo_catalogo(
+            db, GRUPO_ESPECIALIDAD, payload.especialidad
+        )
     for key, value in update_data.items():
         setattr(cuadrilla, key, value)
 
@@ -222,22 +227,10 @@ async def actualizar_personal_cuadrilla(
     if not cuadrilla:
         raise HTTPException(status_code=404, detail="Cuadrilla no encontrada.")
 
-    if cuadrilla.especialidad == "Agua" and payload.chofer_id is not None:
-        raise HTTPException(
-            status_code=400,
-            detail="Las cuadrillas de Agua no admiten el rol Chofer.",
-        )
-    if cuadrilla.especialidad == "Desagüe" and payload.operador_id is not None:
-        raise HTTPException(
-            status_code=400,
-            detail="Las cuadrillas de Desagüe no admiten el rol Operador.",
-        )
-
     ids_personal = {
         payload.lider_id,
         *payload.apoyos_ids,
         *([payload.chofer_id] if payload.chofer_id is not None else []),
-        *([payload.operador_id] if payload.operador_id is not None else []),
     }
     await _validar_personal_mantenimiento(db, ids_personal)
 
@@ -292,7 +285,8 @@ async def actualizar_personal_cuadrilla(
         .where(Cuadrilla.id == cuadrilla_id)
         .execution_options(populate_existing=True)
     )
-    return build_detalle(result.scalars().first())
+    funciones = await mapa_etiquetas(db, GRUPO_FUNCION_CUADRILLA)
+    return build_detalle(result.scalars().first(), funciones)
 
 
 @router.delete(

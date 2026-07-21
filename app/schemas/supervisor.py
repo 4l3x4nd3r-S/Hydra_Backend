@@ -8,8 +8,19 @@ class TecnicoResponse(BaseModel):
     id: int
     codigo_empleado: str
     nombre: str
+    dni: Optional[str] = None
+    celular: Optional[str] = None
     cargo: Optional[str] = None
+    cargo_visible: Optional[str] = None
     area: Optional[str] = None
+    area_visible: Optional[str] = None
+    rol_en_cuadrilla: Optional[str] = None
+    funcion_visible: str
+    es_principal: bool
+    puede_ser_gasfitero: bool
+    puede_ser_chofer: bool
+    cuadrilla_id: Optional[int] = None
+    codigo_cuadrilla: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

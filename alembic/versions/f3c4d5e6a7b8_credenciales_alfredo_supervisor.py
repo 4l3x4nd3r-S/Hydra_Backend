@@ -5,6 +5,7 @@ Revises: f2b3c4d5e6a7
 Create Date: 2026-07-16 05:20:00.000000
 """
 from typing import Sequence, Union
+import os
 
 import sqlalchemy as sa
 from alembic import op
@@ -37,8 +38,17 @@ def _actualizar_credenciales(codigo: str, password: str) -> None:
 
 
 def upgrade() -> None:
-    _actualizar_credenciales("SUP001", "SUP001")
+    codigo = os.environ.get("HYDRA_INITIAL_SUPERVISOR_CODE")
+    password = os.environ.get("HYDRA_INITIAL_SUPERVISOR_PASSWORD")
+    if not codigo or not password:
+        raise RuntimeError(
+            "HYDRA_INITIAL_SUPERVISOR_CODE y "
+            "HYDRA_INITIAL_SUPERVISOR_PASSWORD son obligatorios para esta migración."
+        )
+    _actualizar_credenciales(codigo, password)
 
 
 def downgrade() -> None:
-    _actualizar_credenciales("MAN002", "MAN002")
+    # Un downgrade no debe restaurar una contraseña conocida ni recuperar
+    # secretos que no están almacenados en texto plano.
+    return None

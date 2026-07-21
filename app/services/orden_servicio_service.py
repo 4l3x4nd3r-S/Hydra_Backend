@@ -10,14 +10,9 @@ from app.models.reclamo import Reclamo
 from app.models.cuadrilla import Cuadrilla, CuadrillaPersonal
 from app.models.usuario import Usuario, RolUsuario
 from app.models.auditoria import AuditoriaEvento
+from app.services.catalogo_service import especialidad_para_formato
 
 logger = logging.getLogger("hydra.services.os")
-
-ESPECIALIDAD_POR_FORMATO_RECLAMO = {
-    "Anexo 6": "Desagüe",
-    "Formato 1": "Agua",
-}
-
 
 class OrdenServicioService:
     ESTADOS_OS_ACTIVA = {"ASIGNADO", "EN_PROCESO"}
@@ -147,8 +142,8 @@ class OrdenServicioService:
         if not cuadrilla:
             raise ValueError("Cuadrilla no encontrada.")
 
-        especialidad_requerida = ESPECIALIDAD_POR_FORMATO_RECLAMO.get(
-            formato_reclamo or ""
+        especialidad_requerida = await especialidad_para_formato(
+            self._db, formato_reclamo
         )
         if especialidad_requerida is None:
             raise ValueError(

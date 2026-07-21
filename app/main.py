@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.logging_config import setup_logging
 from app.core.exception_handlers import value_error_handler, unhandled_exception_handler
-from app.routers import auth, usuarios, sectores, puntos_presion, registros_presion, reclamos, cuadrillas, elementos_red, ordenes_servicio, supervisor, uploads
+from app.routers import auth, usuarios, sectores, puntos_presion, registros_presion, reclamos, cuadrillas, elementos_red, ordenes_servicio, supervisor, uploads, catalogos
 
 setup_logging()
 
@@ -18,8 +18,8 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=settings.cors_origins,
+    allow_credentials=bool(settings.cors_origins),
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -47,6 +47,7 @@ app.include_router(elementos_red.router, prefix="/api/v1")
 app.include_router(ordenes_servicio.router, prefix="/api/v1")
 app.include_router(supervisor.router, prefix="/api/v1")
 app.include_router(uploads.router, prefix="/api/v1")
+app.include_router(catalogos.router, prefix="/api/v1")
 
 @app.get("/health", tags=["Sistema"], summary="Estado del servidor")
 @app.head("/health", tags=["Sistema"], summary="Estado del servidor (UptimeRobot)")

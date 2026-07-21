@@ -152,3 +152,12 @@ Documentación interactiva en `http://localhost:8000/docs`
 | `SECRET_KEY` | Clave para firmar tokens JWT | Mínimo 32 caracteres aleatorios |
 | `ALGORITHM` | Algoritmo JWT | `HS256` |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Expiración del token en minutos | `480` (8 horas) |
+# Importación inicial del catastro
+
+Los GeoJSON históricos son fuentes de importación del backend; la aplicación
+móvil nunca los empaqueta. Para cargar o actualizar el catastro de forma
+idempotente:
+
+```powershell
+.\venv\Scripts\python.exe scripts\importar_catastro_geojson.py
+```

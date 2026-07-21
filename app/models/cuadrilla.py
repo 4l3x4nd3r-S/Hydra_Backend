@@ -30,7 +30,6 @@ class RolEnCuadrilla(str, enum.Enum):
     LIDER = "LIDER"
     APOYO = "APOYO"
     CHOFER = "CHOFER"
-    OPERADOR = "OPERADOR"
 
 
 class Cuadrilla(Base):
@@ -53,7 +52,7 @@ class CuadrillaPersonal(Base):
     cuadrilla_id = Column(Integer, ForeignKey("cuadrillas.id"), primary_key=True)
     usuario_id = Column(Integer, ForeignKey("usuarios.id"), primary_key=True)
     rol_en_cuadrilla = Column(
-        Enum(RolEnCuadrilla, name="rol_cuadrilla"), nullable=False, default="APOYO"
+        Enum(RolEnCuadrilla, name="rol_cuadrilla"), nullable=False
     )
 
     cuadrilla = relationship("Cuadrilla", back_populates="personal")

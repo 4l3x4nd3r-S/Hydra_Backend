@@ -8,6 +8,11 @@ from app.core.database import get_db
 from app.core.security import get_current_user, hash_password
 from app.models.usuario import Usuario, RolUsuario
 from app.schemas.usuario import CrearUsuarioRequest, ActualizarUsuarioRequest, UsuarioResponse
+from app.services.catalogo_service import (
+    GRUPO_AREA_USUARIO,
+    GRUPO_CARGO_USUARIO,
+    validar_codigo_catalogo,
+)
 
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
 
@@ -56,9 +61,16 @@ async def crear_usuario(
             detail=f"Ya existe un usuario con código de empleado '{payload.codigo_empleado}'.",
         )
 
+    if payload.cargo is not None:
+        await validar_codigo_catalogo(db, GRUPO_CARGO_USUARIO, payload.cargo)
+    if payload.area is not None:
+        await validar_codigo_catalogo(db, GRUPO_AREA_USUARIO, payload.area)
+
     usuario = Usuario(
         codigo_empleado=payload.codigo_empleado,
         nombre=payload.nombre,
+        dni=payload.dni,
+        celular=payload.celular,
         rol=payload.rol,
         password_hash=hash_password(payload.password),
         cargo=payload.cargo,
@@ -88,8 +100,18 @@ async def actualizar_usuario(
 
     if payload.nombre is not None:
         usuario.nombre = payload.nombre
+    if payload.dni is not None:
+        usuario.dni = payload.dni
+    if payload.celular is not None:
+        usuario.celular = payload.celular
     if payload.rol is not None:
         usuario.rol = payload.rol
+    if payload.cargo is not None:
+        await validar_codigo_catalogo(db, GRUPO_CARGO_USUARIO, payload.cargo)
+        usuario.cargo = payload.cargo
+    if payload.area is not None:
+        await validar_codigo_catalogo(db, GRUPO_AREA_USUARIO, payload.area)
+        usuario.area = payload.area
     if payload.activo is not None:
         usuario.activo = payload.activo
     if payload.password is not None:

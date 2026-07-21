@@ -23,9 +23,9 @@ class Reclamo(Base):
             name="ck_reclamos_codigo_solicitud_5_digitos",
         ),
         CheckConstraint(
-            "numero_medidor IS NULL OR "
-            "(numero_medidor ~ '^[0-9]{7}$' AND numero_medidor <> '0000000')",
-            name="ck_reclamos_numero_medidor_7_digitos",
+            "numero_suministro IS NULL OR "
+            "(numero_suministro ~ '^[0-9]{7}$' AND numero_suministro <> '0000000')",
+            name="ck_reclamos_numero_suministro_7_digitos",
         ),
         CheckConstraint(
             "telefono IS NULL OR telefono ~ '^9[0-9]{8}$'",
@@ -47,7 +47,7 @@ class Reclamo(Base):
     nombre_solicitante = Column(String(200), nullable=True)
     telefono = Column(String(20), nullable=True)
     email = Column(String(200), nullable=True)
-    numero_medidor = Column(String(7), nullable=True)
+    numero_suministro = Column(String(7), nullable=True)
     codigo_solicitud = Column(String(5), nullable=True)
 
     usuario = relationship("Usuario", back_populates="reclamos")

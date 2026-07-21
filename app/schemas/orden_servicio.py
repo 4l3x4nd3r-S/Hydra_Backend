@@ -50,7 +50,7 @@ class ReclamoMinimoResponse(BaseModel):
     descripcion: Optional[str] = None
     nombre_solicitante: Optional[str] = None
     direccion: Optional[str] = None
-    numero_medidor: Optional[str] = None
+    numero_suministro: Optional[str] = None
     telefono: Optional[str] = None
     email: Optional[str] = None
     fecha_registro: Optional[datetime] = None
@@ -74,7 +74,6 @@ class CuadrillaMinimaResponse(BaseModel):
     lider: Optional[MiembroCuadrillaResponse] = None
     apoyos: List[MiembroCuadrillaResponse] = []
     chofer: Optional[MiembroCuadrillaResponse] = None
-    operador: Optional[MiembroCuadrillaResponse] = None
 
     model_config = ConfigDict(from_attributes=True)
 

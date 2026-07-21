@@ -49,7 +49,6 @@ class OrdenServicioSnapshotTest(unittest.TestCase):
             },
             "apoyos": [],
             "chofer": None,
-            "operador": None,
         }
         orden = SimpleNamespace(
             estado_orden="COMPLETADO",

@@ -1,0 +1,1317 @@
+{
+  "type": "FeatureCollection",
+  "name": "Puntos_Presion_Puerto_Maldonado",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.1932096774526,
+          -12.581209151882884
+        ]
+      },
+      "properties": {
+        "id": "P-01",
+        "direccion": "JR. JUAN PABLO II, ESQ. JR. CUSCO",
+        "sector": 1,
+        "zona": "ALTA",
+        "utm_este": 479013.469,
+        "utm_norte": 8609168.335,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.19478785050569,
+          -12.583889751145055
+        ]
+      },
+      "properties": {
+        "id": "P-02",
+        "direccion": "JR. LOS ALPES, ESQ. CALLE TRES PIRAMIDES",
+        "sector": 7,
+        "zona": "ALTA",
+        "utm_este": 478842.266,
+        "utm_norte": 8608871.779,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.19441478707871,
+          -12.584940985364772
+        ]
+      },
+      "properties": {
+        "id": "P-03",
+        "direccion": "JR. JAIME TRONCOSO, ESQ. JR. JAVIER HERAUD",
+        "sector": 1,
+        "zona": "ALTA",
+        "utm_este": 478882.874,
+        "utm_norte": 8608755.56,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.19004843600459,
+          -12.58497875512404
+        ]
+      },
+      "properties": {
+        "id": "P-04",
+        "direccion": "JR. LA CULTURA, ESQ. AV. DOS DE MAYO",
+        "sector": 1,
+        "zona": "ALTA",
+        "utm_este": 479357.147,
+        "utm_norte": 8608751.73,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.19204128158566,
+          -12.588302246171818
+        ]
+      },
+      "properties": {
+        "id": "P-05",
+        "direccion": "JR. TACNA, ESQ. JOSE MARIA GRAIN",
+        "sector": 1,
+        "zona": "ALTA",
+        "utm_este": 479140.954,
+        "utm_norte": 8608384.05,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.18856111958476,
+          -12.586968425126903
+        ]
+      },
+      "properties": {
+        "id": "P-06",
+        "direccion": "AV. DOS DE MAYO, ESQ. AV. TAMBOPATA",
+        "sector": 1,
+        "zona": "ALTA",
+        "utm_este": 479518.856,
+        "utm_norte": 8608531.822,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.18945703398919,
+          -12.590554670926197
+        ]
+      },
+      "properties": {
+        "id": "P-07",
+        "direccion": "AV. 15 DE AGOSTO, ESQ. JR. TACNA",
+        "sector": 1,
+        "zona": "ALTA",
+        "utm_este": 479421.829,
+        "utm_norte": 8608135.173,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.18517913482022,
+          -12.590026138613036
+        ]
+      },
+      "properties": {
+        "id": "P-08",
+        "direccion": "AV. DOS DE MAYO, ESQ. AV. MADRE DE DIOS",
+        "sector": 2,
+        "zona": "ALTA",
+        "utm_este": 479886.44,
+        "utm_norte": 8608193.951,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.18588025164354,
+          -12.593686619719863
+        ]
+      },
+      "properties": {
+        "id": "P-09",
+        "direccion": "JR. 28 DE JULIO, ESQ. JR. TACNA",
+        "sector": 2,
+        "zona": "ALTA",
+        "utm_este": 479810.573,
+        "utm_norte": 8607789.109,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.18344009107341,
+          -12.591569196286926
+        ]
+      },
+      "properties": {
+        "id": "P-10",
+        "direccion": "AV. DOS DE MAYO, ESQ. JR. 28 DE JULIO - LOCAL GAMARRA",
+        "sector": 2,
+        "zona": "ALTA",
+        "utm_este": 480075.449,
+        "utm_norte": 8608023.447,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.17952033570485,
+          -12.592126504439756
+        ]
+      },
+      "properties": {
+        "id": "P-11",
+        "direccion": "AV. ERNESTO RIVERO ESQ. PSJE. 21 (PROLONG. JR. DANIEL ALCIDES CARREON)",
+        "sector": 2,
+        "zona": "ALTA",
+        "utm_este": 480501.241,
+        "utm_norte": 8607962.112,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.17689323565706,
+          -12.597088360276123
+        ]
+      },
+      "properties": {
+        "id": "P-12",
+        "direccion": "JR. 26 DE DICIEMBRE, ESQ. AV. DOS DE MAYO",
+        "sector": 2,
+        "zona": "ALTA",
+        "utm_este": 480786.956,
+        "utm_norte": 8607413.607,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.17442817507127,
+          -12.594400595157158
+        ]
+      },
+      "properties": {
+        "id": "P-13",
+        "direccion": "JR. 26 DE DICIEMBRE, ESQ. JR. BILLINGHURST",
+        "sector": 2,
+        "zona": "ALTA",
+        "utm_este": 481054.499,
+        "utm_norte": 8607711.008,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.1717815935805,
+          -12.595479378104436
+        ]
+      },
+      "properties": {
+        "id": "P-14",
+        "direccion": "JR. ASUNCION NICOLL, ESQ. JR. 10 DE JULIO",
+        "sector": 2,
+        "zona": "BAJA",
+        "utm_este": 481342.036,
+        "utm_norte": 8607591.902,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.17855859554636,
+          -12.601219801120031
+        ]
+      },
+      "properties": {
+        "id": "P-15",
+        "direccion": "CALLE CIRCUNVALACION ESQ. CALLE CONFRATERNIDAD",
+        "sector": 2,
+        "zona": "BAJA",
+        "utm_este": 480606.385,
+        "utm_norte": 8606956.616,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.18031548585809,
+          -12.600179632443531
+        ]
+      },
+      "properties": {
+        "id": "P-16",
+        "direccion": "PSJE. ALAMEDA ESQ. CALLE JUVENTUD",
+        "sector": 2,
+        "zona": "BAJA",
+        "utm_este": 480415.486,
+        "utm_norte": 8607071.511,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.18417488243227,
+          -12.600089041458743
+        ]
+      },
+      "properties": {
+        "id": "P-17",
+        "direccion": "JR. PUNO ESQ. JR. CAJAMARCA",
+        "sector": 3,
+        "zona": "MEDIA",
+        "utm_este": 479996.299,
+        "utm_norte": 8607081.238,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.18192912758182,
+          -12.59763598749264
+        ]
+      },
+      "properties": {
+        "id": "P-18",
+        "direccion": "JR. PUNO ESQ. JR. TACNA",
+        "sector": 2,
+        "zona": "ALTA",
+        "utm_este": 480240.029,
+        "utm_norte": 8607352.675,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.17952033570485,
+          -12.592126504439756
+        ]
+      },
+      "properties": {
+        "id": "P-19",
+        "direccion": "AV. ERNESTO RIVERO, ESQ. JR. GONZALES PRADA",
+        "sector": 2,
+        "zona": "ALTA",
+        "utm_este": 480501.241,
+        "utm_norte": 8607962.112,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.18773651101273,
+          -12.594265058129357
+        ]
+      },
+      "properties": {
+        "id": "P-20",
+        "direccion": "JR. ANCASH ESQ. AV. FITZCARRALD",
+        "sector": 3,
+        "zona": "ALTA",
+        "utm_este": 479609.0,
+        "utm_norte": 8607725.0,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.18769278991195,
+          -12.597293210873223
+        ]
+      },
+      "properties": {
+        "id": "P-21",
+        "direccion": "JR. LAMBAYEQUE ESQ. JR. CAJAMARCA",
+        "sector": 3,
+        "zona": "ALTA",
+        "utm_este": 479613.988,
+        "utm_norte": 8607390.14,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.18917245573252,
+          -12.598844516944693
+        ]
+      },
+      "properties": {
+        "id": "P-22",
+        "direccion": "JR. LAMBAYEQUE ESQ. JR. AMAZONAS",
+        "sector": 3,
+        "zona": "ALTA",
+        "utm_este": 479453.399,
+        "utm_norte": 8607218.476,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.18631673355503,
+          -12.602633554072995
+        ]
+      },
+      "properties": {
+        "id": "P-23",
+        "direccion": "JR. PUNO ESQ. JR. JUNIN",
+        "sector": 3,
+        "zona": "MEDIA",
+        "utm_este": 479763.866,
+        "utm_norte": 8606799.693,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.18689198645536,
+          -12.604898374001392
+        ]
+      },
+      "properties": {
+        "id": "P-24",
+        "direccion": "AV. LEON VELARDE ESQ. PSJE. LOS CETICOS",
+        "sector": 4,
+        "zona": "BAJA",
+        "utm_este": 479701.565,
+        "utm_norte": 8606549.197,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.1912331863863,
+          -12.607710633358813
+        ]
+      },
+      "properties": {
+        "id": "P-25",
+        "direccion": "JR. PUNO ESQ. CALLE PROGRESO - BARRIO NUEVO",
+        "sector": 3,
+        "zona": "BAJA",
+        "utm_este": 479230.29,
+        "utm_norte": 8606237.868,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.192271354858,
+          -12.603675154476079
+        ]
+      },
+      "properties": {
+        "id": "P-26",
+        "direccion": "JR. LOS ROBLES ESQ. AV. MARIA FAKHY HERRERA",
+        "sector": 3,
+        "zona": "MEDIA",
+        "utm_este": 479117.208,
+        "utm_norte": 8606684.043,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.19696008845399,
+          -12.607472587746066
+        ]
+      },
+      "properties": {
+        "id": "P-27",
+        "direccion": "JR. 28 DE MARZO ESQ. JR. ELISA TOULLIER - SALON COMUNAL",
+        "sector": 3,
+        "zona": "MEDIA",
+        "utm_este": 478608.273,
+        "utm_norte": 8606263.732,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.198162194652,
+          -12.605167251276779
+        ]
+      },
+      "properties": {
+        "id": "P-28",
+        "direccion": "PROLONG. 28 DE JULIO ESQ. JR. OBDULIO CORDOVA - MAGISTERIAL",
+        "sector": 3,
+        "zona": "MEDIA",
+        "utm_este": 478477.52,
+        "utm_norte": 8606518.566,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.19667394221067,
+          -12.602314290076007
+        ]
+      },
+      "properties": {
+        "id": "P-29",
+        "direccion": "PSJE. 10 DE JULIO ESQ. JR. LOS PINOS",
+        "sector": 3,
+        "zona": "ALTA",
+        "utm_este": 478638.924,
+        "utm_norte": 8606834.178,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.19728220686157,
+          -12.59897774707465
+        ]
+      },
+      "properties": {
+        "id": "P-30",
+        "direccion": "PSJE. SANTIAGO ESQ. PROLONG. AV. TAMBOPATA",
+        "sector": 4,
+        "zona": "ALTA",
+        "utm_este": 478572.582,
+        "utm_norte": 8607203.095,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.19369785207556,
+          -12.599137253200425
+        ]
+      },
+      "properties": {
+        "id": "P-31",
+        "direccion": "AV. MADRE DE DIOS ESQ. JR. LIBERTAD",
+        "sector": 3,
+        "zona": "ALTA",
+        "utm_este": 478961.904,
+        "utm_norte": 8607185.746,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.19192289863946,
+          -12.595787822845425
+        ]
+      },
+      "properties": {
+        "id": "P-32",
+        "direccion": "JR. AMAZONAS ESQ. PSJE. 12 DE SETIEMBRE - PARQUE",
+        "sector": 3,
+        "zona": "ALTA",
+        "utm_este": 479154.417,
+        "utm_norte": 8607556.279,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.19427842154496,
+          -12.5950724169434
+        ]
+      },
+      "properties": {
+        "id": "P-33",
+        "direccion": "JR. JUNIN ESQ. PSJE. VICTOR RAUL HAYA DE LA TORRE",
+        "sector": 3,
+        "zona": "ALTA",
+        "utm_este": 478898.514,
+        "utm_norte": 8607635.203,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.19263303492878,
+          -12.592263085541124
+        ]
+      },
+      "properties": {
+        "id": "P-34",
+        "direccion": "JR. CAJAMARCA ESQ. JR. MANU",
+        "sector": 3,
+        "zona": "ALTA",
+        "utm_este": 479077.0,
+        "utm_norte": 8607946.0,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.19343227170515,
+          -12.589929427873276
+        ]
+      },
+      "properties": {
+        "id": "P-35",
+        "direccion": "JR. JOSE MARIA GRAIN ESQ. PROLONG. FITZCARRALD",
+        "sector": 3,
+        "zona": "ALTA",
+        "utm_este": 478990.0,
+        "utm_norte": 8608204.0,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.19724648717163,
+          -12.592634174732515
+        ]
+      },
+      "properties": {
+        "id": "P-36",
+        "direccion": "JR. JUNIN ESQUINA - COLISEO GOREMAD",
+        "sector": 3,
+        "zona": "ALTA",
+        "utm_este": 478575.935,
+        "utm_norte": 8607904.592,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.20007539428426,
+          -12.595554084829258
+        ]
+      },
+      "properties": {
+        "id": "P-37",
+        "direccion": "PSJE. PEDRO LABARTHE ESQ. JR. MIROQUESADA  - COLEGIO MILAGROS",
+        "sector": 3,
+        "zona": "ALTA",
+        "utm_este": 478268.916,
+        "utm_norte": 8607581.466,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.20367396111678,
+          -12.595868297113588
+        ]
+      },
+      "properties": {
+        "id": "P-38",
+        "direccion": "PSJE. PEDRO LABARTHE PROSIGUIENDO JR. LOPEZ SUAREZ - FERIA MILAGROS",
+        "sector": 5,
+        "zona": "ALTA",
+        "utm_este": 477878.085,
+        "utm_norte": 8607546.419,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.2027706044984,
+          -12.5934324528819
+        ]
+      },
+      "properties": {
+        "id": "P-39",
+        "direccion": "PSJE. COMANDANTE JUAN VALER ESQ. PSJE. JOSE CARLOS MARIATEGUI",
+        "sector": 5,
+        "zona": "ALTA",
+        "utm_este": 477975.995,
+        "utm_norte": 8607815.859,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.20474089763015,
+          -12.592468493852486
+        ]
+      },
+      "properties": {
+        "id": "P-40",
+        "direccion": "PSJE. IÑAPARI ESQ. PROLONG. JR. JUNIN",
+        "sector": 5,
+        "zona": "ALTA",
+        "utm_este": 477761.907,
+        "utm_norte": 8607922.291,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.20102267336918,
+          -12.591943991925149
+        ]
+      },
+      "properties": {
+        "id": "P-41",
+        "direccion": "JR. RAMON CASTILLO ESQ. JR. JUNIN - GRIFO COYLLORITI",
+        "sector": 4,
+        "zona": "ALTA",
+        "utm_este": 478165.722,
+        "utm_norte": 8607980.604,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.19735201740541,
+          -12.58786805609668
+        ]
+      },
+      "properties": {
+        "id": "P-42",
+        "direccion": "JR. JAVIER HERAUD ESQ. PSJE. LA PERLA",
+        "sector": 4,
+        "zona": "ALTA",
+        "utm_este": 478564.077,
+        "utm_norte": 8608431.637,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.20211878887424,
+          -12.586947100917218
+        ]
+      },
+      "properties": {
+        "id": "P-43",
+        "direccion": "JR. MIGUEL GRAU ESQ. AV. CIRCUNVALACION - PARQUE CAMINEROS",
+        "sector": 4,
+        "zona": "ALTA",
+        "utm_este": 478046.241,
+        "utm_norte": 8608533.086,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.19971873379245,
+          -12.585311395959467
+        ]
+      },
+      "properties": {
+        "id": "P-44",
+        "direccion": "JR. CELESTINO JARA ESQ. JR. JOSE MARIA ARGUEDAS",
+        "sector": 4,
+        "zona": "ALTA",
+        "utm_este": 478306.794,
+        "utm_norte": 8608714.167,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.19988972908718,
+          -12.58246045976781
+        ]
+      },
+      "properties": {
+        "id": "P-45",
+        "direccion": "PSJE. ANGAMOS ESQ. JR. TUPAC AMARU",
+        "sector": 7,
+        "zona": "ALTA",
+        "utm_este": 478287.981,
+        "utm_norte": 8609029.419,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.19571694180028,
+          -12.580957040233532
+        ]
+      },
+      "properties": {
+        "id": "P-46",
+        "direccion": "JR. DANIEL RACUA ESQ. JR. SINCHI ROCA - RECTA CASA OSIRIS",
+        "sector": 7,
+        "zona": "ALTA",
+        "utm_este": 478741.107,
+        "utm_norte": 8609196.013,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.19609914144517,
+          -12.577510507961136
+        ]
+      },
+      "properties": {
+        "id": "P-47",
+        "direccion": "JR. LAS PONAS ESQ. PSJE. LAS CASTAÑUELAS",
+        "sector": 7,
+        "zona": "ALTA",
+        "utm_este": 478699.308,
+        "utm_norte": 8609577.111,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.1924964870121,
+          -12.577311662140756
+        ]
+      },
+      "properties": {
+        "id": "P-48",
+        "direccion": "JR. LAS CAPIRONAS, ESQ. JR. FEDERICO SHUBLER",
+        "sector": 7,
+        "zona": "ALTA",
+        "utm_este": 479090.621,
+        "utm_norte": 8609599.389,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.1944789745382,
+          -12.571239120896472
+        ]
+      },
+      "properties": {
+        "id": "P-49",
+        "direccion": "PSJE. HUASCAR ESQ. JR. LOS GIRASOLES",
+        "sector": 8,
+        "zona": "ALTA",
+        "utm_este": 478874.782,
+        "utm_norte": 8610270.752,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.19308076964252,
+          -12.56673705188332
+        ]
+      },
+      "properties": {
+        "id": "P-50",
+        "direccion": "PSJE. CHOQUEQUIRAO ESQ. JR. SINCHI ROCA",
+        "sector": 8,
+        "zona": "ALTA",
+        "utm_este": 479026.297,
+        "utm_norte": 8610768.717,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.20178549740793,
+          -12.569713733068713
+        ]
+      },
+      "properties": {
+        "id": "P-51",
+        "direccion": "JR. GIRASOLES ESQ. JR. POMA ROSA",
+        "sector": 8,
+        "zona": "ALTA",
+        "utm_este": 478080.981,
+        "utm_norte": 8610438.837,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.19803597028718,
+          -12.573966811700577
+        ]
+      },
+      "properties": {
+        "id": "P-52",
+        "direccion": "AV. TUPAC AMARU ESQ. JR. LAS ORQUIDEAS",
+        "sector": 7,
+        "zona": "ALTA",
+        "utm_este": 478488.63,
+        "utm_norte": 8609968.827,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.20270055007799,
+          -12.574015157621798
+        ]
+      },
+      "properties": {
+        "id": "P-53",
+        "direccion": "JR. CHIMICUAS ESQ. AV. POMA ROSA",
+        "sector": 7,
+        "zona": "ALTA",
+        "utm_este": 477981.949,
+        "utm_norte": 8609963.095,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.2019386402464,
+          -12.576493964181335
+        ]
+      },
+      "properties": {
+        "id": "P-54",
+        "direccion": "JR. BIODIVERSIDAS ESQ. JR. LAS PONAS",
+        "sector": 7,
+        "zona": "ALTA",
+        "utm_este": 478064.921,
+        "utm_norte": 8609689.044,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.20104304033963,
+          -12.579018752662979
+        ]
+      },
+      "properties": {
+        "id": "P-55",
+        "direccion": "AV. CIRCUNVALACION NORTE ESQ. JR. MARACANA",
+        "sector": 7,
+        "zona": "ALTA",
+        "utm_este": 478162.417,
+        "utm_norte": 8609409.919,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.20340221612439,
+          -12.584187767149954
+        ]
+      },
+      "properties": {
+        "id": "P-56",
+        "direccion": "CALLE LIMBER LUNA ESQ. CALLE CHINCHAYSUYO",
+        "sector": 6,
+        "zona": "ALTA",
+        "utm_este": 477906.601,
+        "utm_norte": 8608838.115,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.20662099367192,
+          -12.583665441401255
+        ]
+      },
+      "properties": {
+        "id": "P-57",
+        "direccion": "JR. CONTISUYO ESQ. JR. EMILIO CASTILLO - FRENTE CASA KELER",
+        "sector": 6,
+        "zona": "ALTA",
+        "utm_este": 477556.933,
+        "utm_norte": 8608895.603,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.20709402171296,
+          -12.588020041449354
+        ]
+      },
+      "properties": {
+        "id": "P-58",
+        "direccion": "AV. UNIVERSITARIA ESQ. CALLE ZOILA ANCORA - JARDIN PARTICULAR",
+        "sector": 6,
+        "zona": "ALTA",
+        "utm_este": 477505.932,
+        "utm_norte": 8608414.016,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.21433077502704,
+          -12.584808431292037
+        ]
+      },
+      "properties": {
+        "id": "P-59",
+        "direccion": "AV. ANDRES AVELINO CACERES ESQ. JR. LAS GARDENIAS - CASETA EMAPAT",
+        "sector": 6,
+        "zona": "ALTA",
+        "utm_este": 476719.6,
+        "utm_norte": 8608768.537,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.2120142503698,
+          -12.590216734880087
+        ]
+      },
+      "properties": {
+        "id": "P-60",
+        "direccion": "JR. JORGE CHAVEZ ESQ. JR. AZUCENA",
+        "sector": 6,
+        "zona": "ALTA",
+        "utm_este": 476971.702,
+        "utm_norte": 8608170.672,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.2165560873111,
+          -12.593406747096264
+        ]
+      },
+      "properties": {
+        "id": "P-61",
+        "direccion": "CALLE RAQUEL FUTAGAKI ESQ. PROLONG. FAUSTINO MALDONADO",
+        "sector": 5,
+        "zona": "ALTA",
+        "utm_este": 476478.671,
+        "utm_norte": 8607817.507,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.2246005998988,
+          -12.592973650134114
+        ]
+      },
+      "properties": {
+        "id": "P-62",
+        "direccion": "AV. EL AMANECER ESQ. JR. LOS NARANJALES - CARRETERA CUSCO",
+        "sector": 11,
+        "zona": "ALTA",
+        "utm_este": 475604.868,
+        "utm_norte": 8607864.667,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.21829505479243,
+          -12.602629314842964
+        ]
+      },
+      "properties": {
+        "id": "P-63",
+        "direccion": "JR. LOS PESCADORES ESQ. JR. LOS OTORONGOS - TIENDA",
+        "sector": 9,
+        "zona": "ALTA",
+        "utm_este": 476290.639,
+        "utm_norte": 8606797.486,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.2155324487023,
+          -12.6007982193767
+        ]
+      },
+      "properties": {
+        "id": "P-64",
+        "direccion": "JR. TARICAYA ESQ. JR. LOS LIMONES  - TIENDA",
+        "sector": 9,
+        "zona": "ALTA",
+        "utm_este": 476590.525,
+        "utm_norte": 8607000.223,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.2130302785062,
+          -12.604091001799757
+        ]
+      },
+      "properties": {
+        "id": "P-65",
+        "direccion": "CALLE LAGO SANDOVAL ESQ. JR. LEONCIO PRADO",
+        "sector": 9,
+        "zona": "ALTA",
+        "utm_este": 476862.588,
+        "utm_norte": 8606636.317,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.20928738696253,
+          -12.599024308054691
+        ]
+      },
+      "properties": {
+        "id": "P-66",
+        "direccion": "AV. AEROPUERTO ESQ. JR. TENIENTE ACEVEDO",
+        "sector": 9,
+        "zona": "MEDIA",
+        "utm_este": 477268.662,
+        "utm_norte": 8607196.937,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.20582927648942,
+          -12.600912688589178
+        ]
+      },
+      "properties": {
+        "id": "P-67",
+        "direccion": "AV. LA JOYA ESQ. PSJE. JUANA HORNES - OVALO EL AGUILA",
+        "sector": 9,
+        "zona": "MEDIA",
+        "utm_este": 477644.423,
+        "utm_norte": 8606988.41,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.21023032024628,
+          -12.607837172776977
+        ]
+      },
+      "properties": {
+        "id": "P-68",
+        "direccion": "CALLE BERTHA RAMIREZ ESQ. CALLE LOS CONQUISTADORES - LA JOYA",
+        "sector": 9,
+        "zona": "MEDIA",
+        "utm_este": 477167.027,
+        "utm_norte": 8606222.297,
+        "origen": "Puerto Maldonado"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -69.20323799271203,
+          -12.606623413170247
+        ]
+      },
+      "properties": {
+        "id": "P-69",
+        "direccion": "JR. MANUEL BERNEDO PAZ ESQ. PSJE. KENNEDY",
+        "sector": 10,
+        "zona": "MEDIA",
+        "utm_este": 477926.358,
+        "utm_norte": 8606357.117,
+        "origen": "Puerto Maldonado"
+      }
+    }
+  ]
+}

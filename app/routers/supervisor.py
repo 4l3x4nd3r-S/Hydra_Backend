@@ -6,18 +6,34 @@ from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.security import get_current_user
-from app.models.usuario import Usuario, RolUsuario, AreaUsuario
-from app.models.cuadrilla import Cuadrilla, CuadrillaPersonal, RolEnCuadrilla
+from app.models.usuario import Usuario, RolUsuario, AreaUsuario, CargoUsuario
+from app.models.cuadrilla import (
+    Cuadrilla,
+    CuadrillaPersonal,
+    RolEnCuadrilla,
+)
 from app.models.elemento_red import ElementoRed
 from app.models.orden_servicio import OrdenServicio
 from app.routers.cuadrillas import build_detalle
 from app.services.orden_servicio_snapshot import cuadrilla_para_respuesta
 from app.schemas.supervisor import TecnicoResponse, CrearOrdenServicioRequest
 from app.schemas.orden_servicio import OrdenServicioResponse
+from app.services.catalogo_service import (
+    GRUPO_AREA_USUARIO,
+    GRUPO_CARGO_USUARIO,
+    GRUPO_FUNCION_CUADRILLA,
+    mapa_etiquetas,
+)
 
 router = APIRouter(prefix="/supervisor", tags=["Supervisor"])
 
 ROLES_SUPERVISORES = {RolUsuario.SUPERVISOR}
+
+ORDEN_ROL_CUADRILLA = {
+    RolEnCuadrilla.LIDER: 0,
+    RolEnCuadrilla.APOYO: 1,
+    RolEnCuadrilla.CHOFER: 2,
+}
 
 
 async def require_supervisor(current_user: Usuario = Depends(get_current_user)) -> Usuario:
@@ -29,6 +45,59 @@ async def require_supervisor(current_user: Usuario = Depends(get_current_user)) 
     return current_user
 
 
+def _tecnico_response(
+    usuario: Usuario,
+    funciones: dict[str, str],
+    areas: dict[str, str],
+    cargos: dict[str, str],
+) -> TecnicoResponse:
+    pertenencia = next(
+        (item for item in usuario.cuadrillas if item.cuadrilla is not None),
+        None,
+    )
+    rol = pertenencia.rol_en_cuadrilla if pertenencia is not None else None
+    cuadrilla = pertenencia.cuadrilla if pertenencia is not None else None
+    es_chofer = usuario.cargo == CargoUsuario.CHOFER_CAMIONETA
+    funcion_codigo = rol.value if rol is not None else (
+        "CHOFER" if es_chofer else "GASFITERO"
+    )
+    funcion_visible = funciones.get(funcion_codigo, funcion_codigo)
+    cargo_codigo = usuario.cargo.value if usuario.cargo else None
+    area_codigo = usuario.area.value if usuario.area else None
+    return TecnicoResponse(
+        id=usuario.id,
+        codigo_empleado=usuario.codigo_empleado,
+        nombre=usuario.nombre,
+        dni=usuario.dni,
+        celular=usuario.celular,
+        cargo=cargo_codigo,
+        cargo_visible=cargos.get(cargo_codigo, cargo_codigo) if cargo_codigo else None,
+        area=area_codigo,
+        area_visible=areas.get(area_codigo, area_codigo) if area_codigo else None,
+        rol_en_cuadrilla=rol.value if rol else None,
+        funcion_visible=funcion_visible,
+        es_principal=rol == RolEnCuadrilla.LIDER,
+        puede_ser_gasfitero=not es_chofer,
+        puede_ser_chofer=es_chofer,
+        cuadrilla_id=cuadrilla.id if cuadrilla else None,
+        codigo_cuadrilla=cuadrilla.codigo_grupo if cuadrilla else None,
+    )
+
+
+def _orden_tecnico(tecnico: TecnicoResponse) -> tuple:
+    rol = (
+        RolEnCuadrilla(tecnico.rol_en_cuadrilla)
+        if tecnico.rol_en_cuadrilla
+        else None
+    )
+    return (
+        tecnico.codigo_cuadrilla is None,
+        tecnico.codigo_cuadrilla or "",
+        ORDEN_ROL_CUADRILLA.get(rol, 4),
+        tecnico.nombre.casefold(),
+    )
+
+
 @router.get("/tecnicos", response_model=list[TecnicoResponse], summary="Listar personal disponible")
 async def list_tecnicos(
     current_user: Usuario = Depends(require_supervisor),
@@ -36,6 +105,11 @@ async def list_tecnicos(
 ):
     query = (
         select(Usuario)
+        .options(
+            selectinload(Usuario.cuadrillas).selectinload(
+                CuadrillaPersonal.cuadrilla
+            )
+        )
         .where(
             Usuario.rol == RolUsuario.GASFITERO,
             Usuario.activo == True,
@@ -44,7 +118,14 @@ async def list_tecnicos(
     )
     query = query.order_by(Usuario.nombre)
     result = await db.execute(query)
-    return result.scalars().all()
+    funciones = await mapa_etiquetas(db, GRUPO_FUNCION_CUADRILLA)
+    areas = await mapa_etiquetas(db, GRUPO_AREA_USUARIO)
+    cargos = await mapa_etiquetas(db, GRUPO_CARGO_USUARIO)
+    tecnicos = [
+        _tecnico_response(usuario, funciones, areas, cargos)
+        for usuario in result.scalars().all()
+    ]
+    return sorted(tecnicos, key=_orden_tecnico)
 
 
 @router.get("/tecnicos-disponibles", response_model=list[TecnicoResponse], summary="Listar personal NO asignado a ninguna cuadrilla")
@@ -58,11 +139,15 @@ async def list_tecnicos_disponibles(
             RolEnCuadrilla.LIDER,
             RolEnCuadrilla.APOYO,
             RolEnCuadrilla.CHOFER,
-            RolEnCuadrilla.OPERADOR,
         ]))
     )
     query = (
         select(Usuario)
+        .options(
+            selectinload(Usuario.cuadrillas).selectinload(
+                CuadrillaPersonal.cuadrilla
+            )
+        )
         .where(
             Usuario.rol == RolUsuario.GASFITERO,
             Usuario.activo == True,
@@ -72,7 +157,13 @@ async def list_tecnicos_disponibles(
     )
     query = query.order_by(Usuario.nombre)
     result = await db.execute(query)
-    return result.scalars().all()
+    funciones = await mapa_etiquetas(db, GRUPO_FUNCION_CUADRILLA)
+    areas = await mapa_etiquetas(db, GRUPO_AREA_USUARIO)
+    cargos = await mapa_etiquetas(db, GRUPO_CARGO_USUARIO)
+    return [
+        _tecnico_response(usuario, funciones, areas, cargos)
+        for usuario in result.scalars().all()
+    ]
 
 
 @router.get("/cuadrillas", summary="Listar todas las cuadrillas con sus integrantes")
@@ -86,7 +177,8 @@ async def list_cuadrillas_full(
         .order_by(Cuadrilla.codigo_grupo)
     )
     cuadrillas = result.scalars().all()
-    return [build_detalle(c).model_dump() for c in cuadrillas]
+    funciones = await mapa_etiquetas(db, GRUPO_FUNCION_CUADRILLA)
+    return [build_detalle(c, funciones).model_dump() for c in cuadrillas]
 
 
 @router.get("/elementos-red", summary="Listar todos los elementos de red")
@@ -146,7 +238,7 @@ async def list_ordenes_servicio(
                 "descripcion": o.reclamo.descripcion,
                 "nombre_solicitante": o.reclamo.nombre_solicitante,
                 "direccion": o.reclamo.direccion,
-                "numero_medidor": o.reclamo.numero_medidor,
+                "numero_suministro": o.reclamo.numero_suministro,
                 "telefono": o.reclamo.telefono,
                 "email": o.reclamo.email,
                 "fecha_registro": o.reclamo.fecha_registro,
