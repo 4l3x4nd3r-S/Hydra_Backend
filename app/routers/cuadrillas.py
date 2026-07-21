@@ -71,7 +71,7 @@ async def list_cuadrillas(
     current_user: Usuario = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Cuadrilla).order_by(Cuadrilla.codigo_grupo))
+    result = await db.execute(select(Cuadrilla).where(Cuadrilla.activo == True).order_by(Cuadrilla.codigo_grupo))
     return result.scalars().all()
 
 
@@ -112,6 +112,21 @@ async def crear_cuadrilla(
         *([payload.personal.chofer_id] if payload.personal.chofer_id else []),
     }
     await _validar_personal_mantenimiento(db, ids_personal)
+
+    ocupados_result = await db.execute(
+        select(CuadrillaPersonal.usuario_id)
+        .join(Cuadrilla)
+        .where(
+            CuadrillaPersonal.usuario_id.in_(ids_personal),
+            Cuadrilla.activo == True,
+        )
+    )
+    ocupados = ocupados_result.scalars().all()
+    if ocupados:
+        raise HTTPException(
+            status_code=409,
+            detail="Uno o más integrantes ya pertenecen a otra cuadrilla activa.",
+        )
 
     numero_result = await db.execute(select(cuadrilla_numero_sequence.next_value()))
     numero_cuadrilla = numero_result.scalar_one()
@@ -235,16 +250,19 @@ async def actualizar_personal_cuadrilla(
     await _validar_personal_mantenimiento(db, ids_personal)
 
     ocupados_result = await db.execute(
-        select(CuadrillaPersonal.usuario_id).where(
+        select(CuadrillaPersonal.usuario_id)
+        .join(Cuadrilla)
+        .where(
             CuadrillaPersonal.usuario_id.in_(ids_personal),
             CuadrillaPersonal.cuadrilla_id != cuadrilla_id,
+            Cuadrilla.activo == True,
         )
     )
     ocupados = ocupados_result.scalars().all()
     if ocupados:
         raise HTTPException(
             status_code=409,
-            detail="Uno o más integrantes ya pertenecen a otra cuadrilla.",
+            detail="Uno o más integrantes ya pertenecen a otra cuadrilla activa.",
         )
 
     lider_anterior = next(
@@ -304,7 +322,7 @@ async def eliminar_cuadrilla(
     if not cuadrilla:
         raise HTTPException(status_code=404, detail="Cuadrilla no encontrada.")
 
-    await db.delete(cuadrilla)
+    cuadrilla.activo = False
     await db.commit()
 
 

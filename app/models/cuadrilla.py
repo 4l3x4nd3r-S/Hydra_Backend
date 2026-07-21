@@ -1,5 +1,6 @@
 import enum
 from sqlalchemy import (
+    Boolean,
     Column,
     Integer,
     String,
@@ -41,6 +42,7 @@ class Cuadrilla(Base):
     id = Column(Integer, primary_key=True, index=True)
     codigo_grupo = Column(String(50), nullable=False)
     especialidad = Column(String(50), nullable=True)
+    activo = Column(Boolean, default=True, server_default="true", nullable=False)
 
     personal = relationship("CuadrillaPersonal", back_populates="cuadrilla")
     ordenes = relationship("OrdenServicio", back_populates="cuadrilla")
