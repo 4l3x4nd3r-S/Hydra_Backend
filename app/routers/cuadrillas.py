@@ -322,6 +322,19 @@ async def eliminar_cuadrilla(
     if not cuadrilla:
         raise HTTPException(status_code=404, detail="Cuadrilla no encontrada.")
 
+    from app.models.orden_servicio import OrdenServicio
+    ordenes_activas = await db.execute(
+        select(OrdenServicio.id).where(
+            OrdenServicio.cuadrilla_id == cuadrilla_id,
+            OrdenServicio.estado_orden.in_(["ASIGNADO", "EN_PROCESO"])
+        )
+    )
+    if ordenes_activas.scalars().first():
+        raise HTTPException(
+            status_code=400,
+            detail="Esta cuadrilla tiene órdenes de servicio en proceso o asignadas. Finalícelas o reasígnelas antes de eliminarla."
+        )
+
     cuadrilla.activo = False
     await db.commit()
 
