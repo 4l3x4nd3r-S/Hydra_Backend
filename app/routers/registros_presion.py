@@ -204,3 +204,89 @@ async def upload_excel(
         "insertadas": insertadas,
         "duplicadas_ignoradas": duplicadas,
     }
+
+
+@router.post(
+    "/upload-excel-bulk",
+    summary="Cargar masivamente registros desde múltiples archivos Excel",
+)
+async def upload_excel_bulk(
+    files: list[UploadFile] = File(..., description="Archivos .xlsx exportados de dataloggers"),
+    prefix: Optional[str] = Form(None, description="Prefijo opcional (ej: TRIUNFO_) para evitar conflictos si se repite P-01"),
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    import re
+    resultados = []
+    
+    for file in files:
+        if not file.filename.lower().endswith((".xlsx", ".xls")):
+            resultados.append({"file": file.filename, "status": "Error: Extensión inválida"})
+            continue
+            
+        # Extraer el código P-XX con regex
+        match = re.search(r'(P-\d+)', file.filename, re.IGNORECASE)
+        if not match:
+            resultados.append({"file": file.filename, "status": "Error: No se encontró P-XX en el nombre"})
+            continue
+            
+        codigo_extraido = match.group(1).upper()
+        if prefix:
+            # Si el usuario olvida el guión bajo (ej. escribe TRIUNFO en vez de TRIUNFO_), se lo agregamos automáticamente
+            prefijo_limpio = prefix if prefix.endswith('_') else f"{prefix}_"
+            codigo_extraido = f"{prefijo_limpio}{codigo_extraido}"
+            
+        # Buscar el punto en la DB (usando endswith por si el prefijo falta)
+        punto_result = await db.execute(
+            select(PuntoPresion).where(PuntoPresion.codigo_punto.endswith(codigo_extraido))
+        )
+        puntos = punto_result.scalars().all()
+        
+        if not puntos:
+            resultados.append({"file": file.filename, "status": f"Error: Punto {codigo_extraido} no encontrado"})
+            continue
+        if len(puntos) > 1:
+            resultados.append({"file": file.filename, "status": f"Error: Múltiples puntos coinciden con {codigo_extraido}. Usa el parámetro prefix (ej. PM_ o TRIUNFO_)."})
+            continue
+            
+        punto = puntos[0]
+        
+        contents = await file.read()
+        try:
+            readings = parse_dickson_xlsx(contents)
+            if not readings:
+                resultados.append({"file": file.filename, "status": "Error: Sin lecturas válidas"})
+                continue
+                
+            rows = [
+                {
+                    "punto_presion_id": punto.id,
+                    "fecha_hora": r["timestamp"],
+                    "presion_mca": r["presion_mca"],
+                    "temperatura_c": r["temperatura_c"],
+                }
+                for r in readings
+            ]
+            
+            stmt = pg_insert(RegistroPresion).values(rows).on_conflict_do_nothing(
+                index_elements=["punto_presion_id", "fecha_hora"]
+            )
+            result = await db.execute(stmt)
+            await db.commit()
+            
+            insertadas = result.rowcount if result.rowcount >= 0 else len(rows)
+            duplicadas = len(rows) - insertadas
+            
+            resultados.append({
+                "file": file.filename,
+                "status": "OK",
+                "insertadas": insertadas,
+                "duplicadas_ignoradas": duplicadas,
+                "codigo_punto_detectado": punto.codigo_punto
+            })
+            
+        except Exception as e:
+            resultados.append({"file": file.filename, "status": f"Error: {str(e)}"})
+            
+    return {"resultados": resultados}
+
