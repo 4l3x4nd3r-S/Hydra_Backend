@@ -79,18 +79,19 @@ async def upload_dataloggers(
         for file in files:
             file_bytes = await file.read()
             
-            # Guardar en Storage (backup original)
-            path_en_storage = f"dataloggers/{origen.replace(' ', '_')}/{fecha}/{file.filename}"
-            # Para evitar conflictos, agregamos uuid
+            # Guardar en Storage (backup original) con estructura de carpetas
+            # Reemplazamos espacios por guiones bajos para las carpetas
+            origen_limpio = origen.replace(' ', '_')
             unique_name = f"{uuid.uuid4()}_{file.filename}"
+            ruta_completa_storage = f"dataloggers/{origen_limpio}/{fecha}/{unique_name}"
             
             if supabase:
                 supabase.storage.from_(DATA_BUCKET).upload(
                     file=file_bytes,
-                    path=f"dataloggers/{unique_name}",
+                    path=ruta_completa_storage,
                     file_options={"content-type": file.content_type}
                 )
-                url = supabase.storage.from_(DATA_BUCKET).get_public_url(f"dataloggers/{unique_name}")
+                url = supabase.storage.from_(DATA_BUCKET).get_public_url(ruta_completa_storage)
                 urls_guardadas.append(url)
             
             files_data.append({
