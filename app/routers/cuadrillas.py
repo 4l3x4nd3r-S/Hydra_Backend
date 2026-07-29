@@ -29,6 +29,12 @@ from app.services.catalogo_service import (
 router = APIRouter(prefix="/cuadrillas", tags=["Cuadrillas"])
 
 
+es_principal_map = {
+    RolEnCuadrilla.GASFITERO_PRINCIPAL: True,
+    RolEnCuadrilla.GASFITERO_APOYO: False,
+    RolEnCuadrilla.CHOFER_CAMIONETA: False,
+}
+
 def build_detalle(
     cuadrilla: Cuadrilla,
     funciones: dict[str, str],

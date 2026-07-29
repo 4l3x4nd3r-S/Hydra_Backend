@@ -55,11 +55,17 @@ async def geocode_address(address: str) -> tuple:
         print(f"Error geocoding {address}: {e}")
     return None, None
 
-async def process_reclamos_background(content: bytes, filename: str):
+from typing import Dict, Any
+
+# Diccionario global para rastrear el progreso de subidas
+upload_jobs: Dict[str, Dict[str, Any]] = {}
+
+async def process_reclamos_background(content: bytes, filename: str, job_id: str):
     """
     Procesador en segundo plano para reclamos.
     """
-    print(f"Iniciando procesamiento de reclamos para {filename}...")
+    upload_jobs[job_id] = {"status": "starting", "total": 0, "processed": 0, "error": None}
+    print(f"Iniciando procesamiento de reclamos para {filename} (Job: {job_id})...")
     try:
         complaints_columns = ['N° Reclamo', 'Cod Cliente', 'Dirección', 'Fecha Reclamo', 'Tipo Reclamo']
         
@@ -82,26 +88,28 @@ async def process_reclamos_background(content: bytes, filename: str):
         
         df.columns = ['complaint_number', 'client_code', 'address', 'date_complaint', 'type_complaint']
         
-        # Procesar y geocodificar uno por uno
-        registros_a_insertar = []
-        
         # Obtenemos las direcciones únicas para minimizar llamadas a la API
         direcciones_unicas = df['address'].dropna().unique()
         mapa_coordenadas = {}
         
-        print(f"Geocodificando {len(direcciones_unicas)} direcciones únicas. Esto tomará aproximadamente {len(direcciones_unicas)} segundos...")
+        upload_jobs[job_id]["total"] = len(direcciones_unicas)
+        upload_jobs[job_id]["status"] = "processing"
+        
+        print(f"Geocodificando {len(direcciones_unicas)} direcciones únicas...")
         for address in direcciones_unicas:
             lat, lon = await geocode_address(address)
             mapa_coordenadas[address] = (lat, lon)
-            # Respetar la política de Nominatim (1 request por segundo)
-            await asyncio.sleep(1.1)
+            
+            upload_jobs[job_id]["processed"] += 1
+            # Respetar limite amigable de API si fuera necesario (Google aguanta más, pero por si acaso)
+            await asyncio.sleep(0.1)
             
         # Preparar inserciones
+        registros_a_insertar = []
         for _, row in df.iterrows():
             address = str(row['address'])
             lat, lon = mapa_coordenadas.get(address, (None, None))
             
-            # Limpiar codigos para que cumplan con regex si es posible
             num_reclamo = str(row['complaint_number']).strip()
             if num_reclamo.endswith('.0'): num_reclamo = num_reclamo[:-2]
             if len(num_reclamo) != 5 or num_reclamo == '00000':
@@ -136,5 +144,9 @@ async def process_reclamos_background(content: bytes, filename: str):
         else:
             print(f"[{filename}] No se encontraron registros válidos para insertar.")
             
+        upload_jobs[job_id]["status"] = "completed"
+            
     except Exception as e:
+        upload_jobs[job_id]["status"] = "error"
+        upload_jobs[job_id]["error"] = str(e)
         print(f"Error procesando el archivo de reclamos {filename} en background: {e}")
