@@ -86,30 +86,26 @@ async def process_reclamos_background(content: bytes, filename: str, job_id: str
         df['Dirección'] = df['Dirección'].str.strip()
         df['Dirección'] = df['Dirección'].str.replace('  ', ' ', regex=True)
         
-        df.columns = ['complaint_number', 'client_code', 'address', 'date_complaint', 'type_complaint']
-        
-        # Obtenemos las direcciones únicas para minimizar llamadas a la API
-        direcciones_unicas = df['address'].dropna().unique()
-        mapa_coordenadas = {}
-        
-        upload_jobs[job_id]["total"] = len(direcciones_unicas)
+        upload_jobs[job_id]["total"] = len(df)
         upload_jobs[job_id]["status"] = "processing"
         
-        print(f"Geocodificando {len(direcciones_unicas)} direcciones únicas...")
-        for address in direcciones_unicas:
-            lat, lon = await geocode_address(address)
-            mapa_coordenadas[address] = (lat, lon)
-            
-            upload_jobs[job_id]["processed"] += 1
-            # Respetar limite amigable de API si fuera necesario (Google aguanta más, pero por si acaso)
-            await asyncio.sleep(0.1)
-            
-        # Preparar inserciones
+        print(f"Procesando {len(df)} reclamos en lotes...")
+        mapa_coordenadas = {}
         registros_a_insertar = []
+        batch_size = 100  # Insertar en base de datos cada 100 filas
+        total_insertados = 0
+        
         for _, row in df.iterrows():
             address = str(row['address'])
-            lat, lon = mapa_coordenadas.get(address, (None, None))
             
+            # Geocodificar solo si no lo tenemos en caché
+            if address not in mapa_coordenadas:
+                lat, lon = await geocode_address(address)
+                mapa_coordenadas[address] = (lat, lon)
+                await asyncio.sleep(0.1)  # Respetar límite de la API
+            else:
+                lat, lon = mapa_coordenadas[address]
+                
             num_reclamo = str(row['complaint_number']).strip()
             if num_reclamo.endswith('.0'): num_reclamo = num_reclamo[:-2]
             if len(num_reclamo) != 5 or num_reclamo == '00000':
@@ -135,15 +131,24 @@ async def process_reclamos_background(content: bytes, filename: str, job_id: str
                 estado="HISTORICO"
             )
             registros_a_insertar.append(reclamo)
+            upload_jobs[job_id]["processed"] += 1
             
+            # Si llegamos al tamaño del lote, guardamos en la base de datos
+            if len(registros_a_insertar) >= batch_size:
+                async with AsyncSessionLocal() as db:
+                    db.add_all(registros_a_insertar)
+                    await db.commit()
+                total_insertados += len(registros_a_insertar)
+                registros_a_insertar = []
+                
+        # Insertar los registros restantes que no alcanzaron a formar un lote completo
         if registros_a_insertar:
             async with AsyncSessionLocal() as db:
                 db.add_all(registros_a_insertar)
                 await db.commit()
-                print(f"[{filename}] Se insertaron {len(registros_a_insertar)} reclamos correctamente.")
-        else:
-            print(f"[{filename}] No se encontraron registros válidos para insertar.")
+            total_insertados += len(registros_a_insertar)
             
+        print(f"[{filename}] Se insertaron {total_insertados} reclamos correctamente en lotes.")
         upload_jobs[job_id]["status"] = "completed"
             
     except Exception as e:
