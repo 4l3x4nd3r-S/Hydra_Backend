@@ -25,28 +25,47 @@ async def fetch_and_prepare_data():
             "SELECT codigo_punto, latitud, longitud FROM puntos_presion WHERE latitud IS NOT NULL", sync_conn
         ))
         
-        # 2. Reclamos Historicos (fugas)
+        # 2. Reclamos Historicos (fugas y operativos)
         reclamos_df = await conn.run_sync(lambda sync_conn: pd.read_sql(
-            "SELECT fecha_registro, latitud, longitud FROM reclamos_historicos WHERE latitud IS NOT NULL", sync_conn
+            "SELECT fecha_registro, latitud, longitud, tipo_problema FROM reclamos_historicos WHERE latitud IS NOT NULL", sync_conn
         ))
         
         # 3. Registros de Presion (features)
         # Hacemos la agregacion mensual en la BD
         presion_query = """
+            WITH diffs AS (
+                SELECT 
+                    pp.codigo_punto as pressure_point,
+                    EXTRACT(YEAR FROM rp.fecha_hora) as year,
+                    EXTRACT(MONTH FROM rp.fecha_hora) as month,
+                    rp.presion_mca,
+                    rp.temperatura_c,
+                    rp.presion_mca - LAG(rp.presion_mca) OVER (PARTITION BY pp.codigo_punto ORDER BY rp.fecha_hora) as pressure_diff
+                FROM registros_presion rp
+                JOIN puntos_presion pp ON rp.punto_presion_id = pp.id
+            ),
+            thresholds AS (
+                SELECT PERCENTILE_CONT(0.05) WITHIN GROUP (ORDER BY pressure_diff) as drop_threshold
+                FROM diffs
+            )
             SELECT 
-                pp.codigo_punto as pressure_point,
-                CAST(EXTRACT(YEAR FROM rp.fecha_hora) AS INTEGER) as year,
-                CAST(EXTRACT(MONTH FROM rp.fecha_hora) AS INTEGER) as month,
-                AVG(rp.presion_mca) as pressure_mean,
-                COALESCE(STDDEV(rp.presion_mca), 0) as pressure_std,
-                MIN(rp.presion_mca) as pressure_min,
-                MAX(rp.presion_mca) as pressure_max,
-                MAX(rp.presion_mca) - MIN(rp.presion_mca) as pressure_range,
-                AVG(rp.temperatura_c) as temp_mean,
-                MAX(rp.temperatura_c) as temp_max
-            FROM registros_presion rp
-            JOIN puntos_presion pp ON rp.punto_presion_id = pp.id
-            GROUP BY pp.codigo_punto, EXTRACT(YEAR FROM rp.fecha_hora), EXTRACT(MONTH FROM rp.fecha_hora)
+                d.pressure_point,
+                CAST(d.year AS INTEGER) as year,
+                CAST(d.month AS INTEGER) as month,
+                AVG(d.presion_mca) as pressure_mean,
+                COALESCE(STDDEV(d.presion_mca), 0) as pressure_std,
+                MIN(d.presion_mca) as pressure_min,
+                MAX(d.presion_mca) as pressure_max,
+                MAX(d.presion_mca) - MIN(d.presion_mca) as pressure_range,
+                PERCENTILE_CONT(0.10) WITHIN GROUP (ORDER BY d.presion_mca) as pressure_p10,
+                AVG(d.temperatura_c) as temp_mean,
+                MAX(d.temperatura_c) as temp_max,
+                SUM(CASE WHEN d.pressure_diff < t.drop_threshold THEN 1 ELSE 0 END) as n_sudden_drops,
+                COUNT(*) as n_readings,
+                CAST(SUM(CASE WHEN d.pressure_diff < t.drop_threshold THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) as sudden_drop_rate
+            FROM diffs d
+            CROSS JOIN thresholds t
+            GROUP BY d.pressure_point, d.year, d.month
         """
         loggers_df = await conn.run_sync(lambda sync_conn: pd.read_sql(text(presion_query), sync_conn))
         
@@ -58,48 +77,103 @@ async def fetch_and_prepare_data():
         reclamos_df['year'] = pd.to_datetime(reclamos_df['fecha_registro']).dt.year
         reclamos_df['month'] = pd.to_datetime(reclamos_df['fecha_registro']).dt.month
         
-        targets = reclamos_df.groupby(['pressure_point', 'year', 'month']).size().reset_index(name='n_fuga')
+        # Filtros de tipos de problemas (como en m_1_prepare_data)
+        FUGA_TYPES = [
+            'B10. FUGA DE AGUA EN CAJA MEDIDOR',
+            'B5. FUGAS EN RED MATRIZ',
+            'B1. FUGAS EN CONEXION DOMICILIARIA',
+        ]
+
+        ADMIN_TYPES = [
+            'TRABAJOS COLATERAS',
+            'REPOSICIÓN DE TUBERIA DE CONCRETO A PVC - DESAGÜE',
+            'B9. LIMPIEZA LLAVE DE TOMA',
+            'B12. BUZON SIN TAPA',
+            'B13. CALIDAD DE AGUA',
+            'B14. INSTALACION DE MEDIDOR',
+            'REUBICACIÓN DE CONEXION',
+            'REPOSICIÓN DE MEDIDOR POR HURTO',
+            'REPOSICIÓN DE CAJA DE MEDIDOR'
+        ]
+        
+        reclamos_df['tipo_problema'] = reclamos_df['tipo_problema'].fillna('').str.upper()
+        reclamos_df['is_fuga'] = reclamos_df['tipo_problema'].isin(FUGA_TYPES)
+        reclamos_df['is_operational'] = ~reclamos_df['tipo_problema'].isin(ADMIN_TYPES)
+        
+        reclamos_fuga = reclamos_df[reclamos_df['is_fuga']]
+        reclamos_op = reclamos_df[reclamos_df['is_operational']]
+        
+        t_fuga = reclamos_fuga.groupby(['pressure_point', 'year', 'month']).size().reset_index(name='n_fuga')
+        t_op = reclamos_op.groupby(['pressure_point', 'year', 'month']).size().reset_index(name='n_operativos')
+        
+        targets = t_fuga.merge(t_op, on=['pressure_point', 'year', 'month'], how='outer')
+        targets['n_fuga'] = targets['n_fuga'].fillna(0)
+        targets['n_operativos'] = targets['n_operativos'].fillna(0)
     else:
-        targets = pd.DataFrame(columns=['pressure_point', 'year', 'month', 'n_fuga'])
+        targets = pd.DataFrame(columns=['pressure_point', 'year', 'month', 'n_fuga', 'n_operativos'])
         
     # Merge loggers con targets
     loggers_df['origin'] = 'hydra'
     targets['origin'] = 'hydra'
-    targets['n_operativos'] = 0 # Dummy por ahora, si tuvieramos operativos podriamos contarlos
     
     panel = loggers_df.merge(targets, on=['origin', 'pressure_point', 'year', 'month'], how='left')
-    panel['n_fuga'] = panel['n_fuga'].fillna(0)
-    panel['n_operativos'] = panel['n_operativos'].fillna(0)
     
-    # Rellenar con 0 para meses donde no hubo reclamos hasta el mes maximo actual
+    if not targets.empty:
+        reclamos_max_year = targets['year'].max()
+        reclamos_max_month = targets[targets['year'] == reclamos_max_year]['month'].max()
+        reclamos_max_date = pd.to_datetime(f"{int(reclamos_max_year)}-{int(reclamos_max_month)}-01")
+    else:
+        reclamos_max_date = pd.to_datetime('today')
+        
     panel['date'] = pd.to_datetime(panel['year'].astype(str) + '-' + panel['month'].astype(str) + '-01')
+    within_range = panel['date'] <= reclamos_max_date
+    
+    for col in ['n_fuga', 'n_operativos']:
+        if col in panel.columns:
+            panel.loc[within_range, col] = panel.loc[within_range, col].fillna(0)
+            
     panel = panel.sort_values(['origin', 'pressure_point', 'year', 'month']).reset_index(drop=True)
     
-    # Feature Engineering (Mismo que el notebook m_2)
+    # Feature Engineering (Exactamente como m_2)
     grp = panel.groupby(['origin', 'pressure_point'])
     
     lag_features = [
-        'pressure_mean', 'pressure_std', 'pressure_min', 'pressure_max', 
-        'temp_mean', 'temp_max', 'pressure_range',
+        'pressure_mean', 'pressure_std', 'pressure_min', 'pressure_max', 'pressure_p10',
+        'temp_mean', 'temp_max', 'sudden_drop_rate', 'pressure_range',
         'n_fuga', 'n_operativos',
     ]
     
-    # Para simplificar y evitar NaN, 'pressure_p10' y 'sudden_drop_rate' se pueden inicializar a 0 si faltan
-    panel['pressure_p10'] = panel['pressure_min'] + (panel['pressure_range'] * 0.1)
-    panel['sudden_drop_rate'] = 0
-    lag_features.extend(['pressure_p10', 'sudden_drop_rate'])
-    
     for feat in lag_features:
-        panel[f'{feat}_lag1'] = grp[feat].shift(1)
-        panel[f'{feat}_roll3'] = grp[feat].transform(lambda s: s.shift(1).rolling(3, min_periods=1).mean())
-        # roll3_incl
-        panel[f'{feat}_roll3_incl'] = grp[feat].transform(lambda s: s.rolling(3, min_periods=1).mean())
+        if feat in panel.columns:
+            panel[f'{feat}_lag1'] = grp[feat].shift(1)
+            panel[f'{feat}_roll3'] = grp[feat].transform(lambda s: s.shift(1).rolling(3, min_periods=1).mean())
+            panel[f'{feat}_roll3_incl'] = grp[feat].transform(lambda s: s.rolling(3, min_periods=1).mean())
 
-    panel['target_fuga_next'] = grp['n_fuga'].shift(-1)
-    panel['risk_fuga_next'] = (panel['target_fuga_next'] > 0).astype(float)
-    
+    panel['prev_date'] = grp['date'].shift(1)
+    panel['months_since_last_visit'] = (
+        (panel['date'].dt.year - panel['prev_date'].dt.year) * 12 +
+        (panel['date'].dt.month - panel['prev_date'].dt.month)
+    )
+
+    if 'pressure_mean_lag1' in panel.columns:
+        panel['pressure_mean_delta'] = panel['pressure_mean'] - panel['pressure_mean_lag1']
+        
     panel['month_sin'] = np.sin(2 * np.pi * panel['month'] / 12)
     panel['month_cos'] = np.cos(2 * np.pi * panel['month'] / 12)
+    
+    panel['target_fuga_next'] = grp['n_fuga'].shift(-1)
+    panel['target_operativos_next'] = grp['n_operativos'].shift(-1)
+    panel['next_date'] = grp['date'].shift(-1)
+    panel['months_to_next_visit'] = (
+        (panel['next_date'].dt.year - panel['date'].dt.year) * 12 +
+        (panel['next_date'].dt.month - panel['date'].dt.month)
+    )
+    
+    panel['risk_fuga_next'] = (panel['target_fuga_next'] > 0).astype(float)
+    panel.loc[panel['target_fuga_next'].isna(), 'risk_fuga_next'] = np.nan
+    
+    panel['risk_operativos_next'] = (panel['target_operativos_next'] > 0).astype(float)
+    panel.loc[panel['target_operativos_next'].isna(), 'risk_operativos_next'] = np.nan
     
     return panel
 
@@ -122,16 +196,54 @@ async def train_model():
     X = data[FEATURES].values
     y = data[TARGET].values.astype(int)
     
-    # Usar Random Forest
+    # 1. Evaluacion con TimeSeriesSplit (exactamente como m_3)
+    N_SPLITS = 5
+    # Si hay pocos datos, ajustamos N_SPLITS
+    actual_splits = min(N_SPLITS, len(data) // 10)
+    
+    metrics_history = []
+    if actual_splits > 1:
+        tscv = TimeSeriesSplit(n_splits=actual_splits)
+        for train_idx, test_idx in tscv.split(X):
+            X_train, X_test = X[train_idx], X[test_idx]
+            y_train, y_test = y[train_idx], y[test_idx]
+            
+            if len(np.unique(y_train)) < 2 or len(np.unique(y_test)) < 2:
+                continue
+                
+            rf_cv = RandomForestClassifier(
+                n_estimators=300, max_depth=4, min_samples_leaf=10,
+                class_weight='balanced', random_state=42
+            )
+            rf_cv.fit(X_train, y_train)
+            pred_rf = rf_cv.predict(X_test)
+            proba_rf = rf_cv.predict_proba(X_test)[:, 1]
+            
+            metrics_history.append({
+                'precision': precision_score(y_test, pred_rf, zero_division=0),
+                'recall': recall_score(y_test, pred_rf, zero_division=0),
+                'f1': f1_score(y_test, pred_rf, zero_division=0),
+                'auc': roc_auc_score(y_test, proba_rf),
+            })
+            
+    # Promediar metricas
+    final_metrics = {"precision": 0, "recall": 0, "f1": 0, "auc": 0}
+    if metrics_history:
+        df_metrics = pd.DataFrame(metrics_history)
+        final_metrics = {
+            "precision": round(df_metrics['precision'].mean(), 3),
+            "recall": round(df_metrics['recall'].mean(), 3),
+            "f1": round(df_metrics['f1'].mean(), 3),
+            "auc": round(df_metrics['auc'].mean(), 3)
+        }
+    
+    # 2. Entrenar modelo final para produccion con TODOS los datos
     rf = RandomForestClassifier(
         n_estimators=300, max_depth=4, min_samples_leaf=10,
         class_weight='balanced', random_state=42
     )
-    
-    # Entrenar modelo final con todos los datos
     rf.fit(X, y)
     
-    # Guardar scaler y modelo
     scaler = StandardScaler()
     scaler.fit(X)
     
@@ -140,14 +252,20 @@ async def train_model():
         'scaler': scaler,
         'features': FEATURES,
         'trained_at': datetime.now().isoformat(),
-        'n_samples': len(data)
+        'n_samples': len(data),
+        'metrics': final_metrics
     }
     
     model_path = MODEL_DIR / 'rf_model.pkl'
     with open(model_path, 'wb') as f:
         pickle.dump(artifacts, f)
         
-    return {"success": True, "message": f"Modelo entrenado exitosamente con {len(data)} muestras.", "path": str(model_path)}
+    return {
+        "success": True, 
+        "message": f"Modelo entrenado exitosamente con {len(data)} muestras.",
+        "metrics": final_metrics,
+        "path": str(model_path)
+    }
 
 def predict_risk(month_data: pd.DataFrame) -> dict:
     """Predice el riesgo de fugas basándose en el modelo entrenado."""
