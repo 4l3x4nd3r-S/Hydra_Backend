@@ -101,7 +101,7 @@ async def crear_registros_bulk(
             "fecha_hora": r.fecha_hora,
             "presion_mca": r.presion_mca,
             "temperatura_c": r.temperatura_c,
-            "dispositivo_serie": r.dispositivo_serie,
+
         }
         for r in payload
     ]

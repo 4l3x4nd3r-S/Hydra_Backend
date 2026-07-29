@@ -8,9 +8,8 @@ class CrearOrdenServicioRequest(BaseModel):
     numero_orden: Optional[str] = None
     reclamo_id: Optional[int] = None
     supervisor_id: Optional[int] = None
-    cuadrilla_id: Optional[int] = None
-    responsable_id: Optional[int] = None
-    sector_id: Optional[int] = None
+    cuadrilla_id: int
+
     fecha_programacion: Optional[datetime] = None
 
 
@@ -19,8 +18,7 @@ class ActualizarOrdenServicioRequest(BaseModel):
     reclamo_id: Optional[int] = None
     supervisor_id: Optional[int] = None
     cuadrilla_id: Optional[int] = None
-    responsable_id: Optional[int] = None
-    sector_id: Optional[int] = None
+
     fecha_programacion: Optional[datetime] = None
     estado_orden: Optional[str] = None
 
@@ -28,7 +26,6 @@ class ActualizarOrdenServicioRequest(BaseModel):
 class FinalizarOrdenRequest(BaseModel):
     insumos_utilizados: Optional[str] = None
     observaciones_gasfitero: Optional[str] = None
-    ruta_carpeta_evidencias: Optional[str] = None
     trabajo_ejecutado: Optional[str] = None
     problemas: Optional[str] = None
     soluciones: Optional[str] = None
@@ -94,14 +91,13 @@ class OrdenServicioResponse(BaseModel):
     supervisor_id: Optional[int] = None
     cuadrilla_id: Optional[int] = None
     responsable_id: Optional[int] = None
-    sector_id: Optional[int] = None
+
     fecha_programacion: Optional[datetime] = None
     fecha_ejecucion_inicio: Optional[datetime] = None
     fecha_ejecucion_fin: Optional[datetime] = None
     estado_orden: Optional[str] = None
     insumos_utilizados: Optional[str] = None
     observaciones_gasfitero: Optional[str] = None
-    ruta_carpeta_evidencias: Optional[str] = None
     created_at: Optional[datetime] = None
     trabajo_ejecutado: Optional[str] = None
     problemas: Optional[str] = None
@@ -114,6 +110,5 @@ class OrdenServicioResponse(BaseModel):
 
     reclamo: Optional[ReclamoMinimoResponse] = None
     cuadrilla: Optional[CuadrillaMinimaResponse] = None
-    responsable: Optional[ResponsableMinimoResponse] = None
 
     model_config = ConfigDict(from_attributes=True)

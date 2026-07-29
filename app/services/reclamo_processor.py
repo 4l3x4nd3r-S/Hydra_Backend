@@ -7,7 +7,7 @@ from pathlib import Path
 from datetime import datetime
 
 from app.core.database import AsyncSessionLocal
-from app.models.reclamo import Reclamo
+from app.models.reclamo_historico import ReclamoHistorico
 
 # Si se cuenta con un yaml real en el sistema de archivos:
 # REEMPLAZOS_PATH = Path('C:/Users/ALEXANDER_SUNI/Documents/ALEXANDERSUNI/DATA/datathon/data/utils/reemplazos.yaml')
@@ -24,27 +24,33 @@ def get_reemplazos() -> dict:
     return {}
 
 async def geocode_address(address: str) -> tuple:
-    """Retorna (latitud, longitud) usando Nominatim"""
+    """Retorna (latitud, longitud) usando Google Maps Geocoding API"""
+    from app.core.config import settings
+    if not settings.GOOGLE_MAPS_API_KEY:
+        print("Advertencia: No hay GOOGLE_MAPS_API_KEY configurada.")
+        return None, None
+        
     try:
-        url = "https://nominatim.openstreetmap.org/search"
+        url = "https://maps.googleapis.com/maps/api/geocode/json"
         location = ', PUERTO MALDONADO, MADRE DE DIOS, PERÚ'
         params = {
-            "q": address + location,
-            "format": "json",
-            "addressdetails": 1,
-            "limit": 1
+            "address": address + location,
+            "key": settings.GOOGLE_MAPS_API_KEY
         }
-        headers = {
-            "User-Agent": "HydraBackend/2.0"
-        }
+        
         # Hacer petición bloqueante de requests en un thread separado para no bloquear asyncio
         loop = asyncio.get_event_loop()
-        r = await loop.run_in_executor(None, lambda: requests.get(url, params=params, headers=headers, timeout=10))
+        r = await loop.run_in_executor(None, lambda: requests.get(url, params=params, timeout=10))
         
         if r.status_code == 200:
             data = r.json()
-            if data:
-                return float(data[0]['lat']), float(data[0]['lon'])
+            if data.get('status') == 'OK' and data.get('results'):
+                location_data = data['results'][0]['geometry']['location']
+                return float(location_data['lat']), float(location_data['lng'])
+            else:
+                print(f"No se encontraron coordenadas para {address}: {data.get('status')}")
+        else:
+            print(f"Error de API para {address}: {r.status_code}")
     except Exception as e:
         print(f"Error geocoding {address}: {e}")
     return None, None
@@ -110,7 +116,7 @@ async def process_reclamos_background(content: bytes, filename: str):
             if pd.isnull(fecha):
                 fecha = datetime.now()
                 
-            reclamo = Reclamo(
+            reclamo = ReclamoHistorico(
                 codigo_solicitud=num_reclamo,
                 numero_suministro=cod_cliente,
                 direccion=address,
@@ -118,8 +124,7 @@ async def process_reclamos_background(content: bytes, filename: str):
                 tipo_problema=str(row['type_complaint']) if pd.notnull(row['type_complaint']) else None,
                 latitud=lat,
                 longitud=lon,
-                estado="PENDIENTE", # Estado por defecto
-                canal_entrada="ARCHIVO_EXCEL"
+                estado="HISTORICO"
             )
             registros_a_insertar.append(reclamo)
             

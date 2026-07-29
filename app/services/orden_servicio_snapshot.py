@@ -4,8 +4,7 @@ from app.models.cuadrilla import Cuadrilla, RolEnCuadrilla
 from app.models.orden_servicio import OrdenServicio
 
 
-ESTADOS_OS_ARCHIVADA = {"COMPLETADO", "ARCHIVADO"}
-
+ESTADOS_OS_FINALIZADA = {"COMPLETADO"}
 
 def construir_snapshot_cuadrilla(cuadrilla: Cuadrilla | None) -> dict[str, Any] | None:
     if cuadrilla is None:
@@ -30,11 +29,11 @@ def construir_snapshot_cuadrilla(cuadrilla: Cuadrilla | None) -> dict[str, Any] 
             "rol_en_cuadrilla": rol.value if rol else "",
         }
 
-        if rol == RolEnCuadrilla.LIDER:
+        if rol == RolEnCuadrilla.GASFITERO_PRINCIPAL:
             snapshot["lider"] = persona
-        elif rol == RolEnCuadrilla.APOYO:
+        elif rol == RolEnCuadrilla.GASFITERO_APOYO:
             snapshot["apoyos"].append(persona)
-        elif rol == RolEnCuadrilla.CHOFER:
+        elif rol == RolEnCuadrilla.CHOFER_CAMIONETA:
             snapshot["chofer"] = persona
 
     return snapshot
@@ -42,6 +41,6 @@ def construir_snapshot_cuadrilla(cuadrilla: Cuadrilla | None) -> dict[str, Any] 
 
 def cuadrilla_para_respuesta(orden: OrdenServicio) -> dict[str, Any] | None:
     estado = (orden.estado_orden or "").upper()
-    if estado in ESTADOS_OS_ARCHIVADA and orden.cuadrilla_snapshot is not None:
+    if estado in ESTADOS_OS_FINALIZADA and orden.cuadrilla_snapshot is not None:
         return orden.cuadrilla_snapshot
     return construir_snapshot_cuadrilla(orden.cuadrilla)

@@ -13,7 +13,7 @@ def _cuadrilla(nombre_grupo: str, lider_id: int, lider_nombre: str):
     )
     integrante = SimpleNamespace(
         usuario=usuario,
-        rol_en_cuadrilla=RolEnCuadrilla.LIDER,
+        rol_en_cuadrilla=RolEnCuadrilla.GASFITERO_PRINCIPAL,
     )
     return SimpleNamespace(
         id=1,

@@ -8,3 +8,4 @@ from app.models.elemento_red import ElementoRed
 from app.models.orden_servicio import OrdenServicio
 from app.models.auditoria import AuditoriaEvento
 from app.models.catalogo import CatalogoOpcion
+from app.models.reclamo_historico import ReclamoHistorico

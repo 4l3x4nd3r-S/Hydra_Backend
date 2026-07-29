@@ -62,6 +62,3 @@ class Usuario(Base):
     ordenes_supervisadas = relationship(
         "OrdenServicio", back_populates="supervisor", foreign_keys="OrdenServicio.supervisor_id"
     )
-    ordenes_asignadas = relationship(
-        "OrdenServicio", back_populates="responsable", foreign_keys="OrdenServicio.responsable_id"
-    )

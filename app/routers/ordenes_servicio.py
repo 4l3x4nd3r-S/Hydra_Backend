@@ -12,7 +12,7 @@ from app.models.usuario import Usuario, RolUsuario
 from app.models.cuadrilla import Cuadrilla, CuadrillaPersonal
 from app.models.orden_servicio import OrdenServicio
 from app.services.orden_servicio_snapshot import (
-    ESTADOS_OS_ARCHIVADA,
+    ESTADOS_OS_FINALIZADA,
     construir_snapshot_cuadrilla,
     cuadrilla_para_respuesta,
 )
@@ -45,30 +45,19 @@ def _build_os_response(o: OrdenServicio) -> dict:
             "fecha_registro": o.reclamo.fecha_registro,
         }
 
-    responsable_data = None
-    if getattr(o, "responsable", None):
-        responsable_data = {
-            "id": o.responsable.id,
-            "nombre": o.responsable.nombre,
-            "codigo_empleado": o.responsable.codigo_empleado,
-            "cargo": o.responsable.cargo.value if o.responsable.cargo else None,
-        }
-        
     return {
         "id": o.id,
         "numero_orden": o.numero_orden,
         "reclamo_id": o.reclamo_id,
         "supervisor_id": o.supervisor_id,
         "cuadrilla_id": o.cuadrilla_id,
-        "responsable_id": o.responsable_id,
-        "sector_id": o.sector_id,
+
         "fecha_programacion": o.fecha_programacion,
         "fecha_ejecucion_inicio": o.fecha_ejecucion_inicio,
         "fecha_ejecucion_fin": o.fecha_ejecucion_fin,
         "estado_orden": o.estado_orden,
         "insumos_utilizados": o.insumos_utilizados,
         "observaciones_gasfitero": o.observaciones_gasfitero,
-        "ruta_carpeta_evidencias": o.ruta_carpeta_evidencias,
         "created_at": o.created_at,
         "trabajo_ejecutado": getattr(o, "trabajo_ejecutado", None),
         "problemas": getattr(o, "problemas", None),
@@ -80,7 +69,6 @@ def _build_os_response(o: OrdenServicio) -> dict:
         "fotos_solucion_urls": getattr(o, "fotos_solucion_urls", None) or [],
         "reclamo": reclamo_data,
         "cuadrilla": cuadrilla_data,
-        "responsable": responsable_data,
     }
 
 
@@ -97,7 +85,7 @@ async def list_ordenes(
         selectinload(OrdenServicio.cuadrilla)
             .selectinload(Cuadrilla.personal)
             .selectinload(CuadrillaPersonal.usuario),
-        selectinload(OrdenServicio.responsable),
+
         selectinload(OrdenServicio.reclamo),
     ).order_by(OrdenServicio.created_at.desc())
 
@@ -108,12 +96,10 @@ async def list_ordenes(
         )
         user_cuadrilla_ids = user_cuadrillas_result.scalars().all()
 
-        from sqlalchemy import or_
-        conditions = []
-        if user_cuadrilla_ids:
-            conditions.append(OrdenServicio.cuadrilla_id.in_(user_cuadrilla_ids))
-        conditions.append(OrdenServicio.responsable_id == current_user.id)
-        query = query.where(or_(*conditions))
+        if not user_cuadrilla_ids:
+            return []
+        
+        query = query.where(OrdenServicio.cuadrilla_id.in_(user_cuadrilla_ids))
 
     if estado:
         query = query.where(OrdenServicio.estado_orden == estado)
@@ -138,7 +124,7 @@ async def get_orden(
         selectinload(OrdenServicio.cuadrilla)
             .selectinload(Cuadrilla.personal)
             .selectinload(CuadrillaPersonal.usuario),
-        selectinload(OrdenServicio.responsable),
+
         selectinload(OrdenServicio.reclamo),
     ).where(OrdenServicio.id == orden_id)
     result = await db.execute(query)
@@ -154,9 +140,8 @@ async def get_orden(
         user_cuadrilla_ids = user_cuadrillas_result.scalars().all()
 
         is_in_cuadrilla = orden.cuadrilla_id in user_cuadrilla_ids
-        is_responsable = orden.responsable_id == current_user.id
 
-        if not (is_in_cuadrilla or is_responsable):
+        if not is_in_cuadrilla:
             raise HTTPException(status_code=403, detail="No tienes acceso a esta orden de servicio.")
 
     return _build_os_response(orden)
@@ -176,7 +161,7 @@ async def actualizar_orden(
             selectinload(OrdenServicio.cuadrilla)
                 .selectinload(Cuadrilla.personal)
                 .selectinload(CuadrillaPersonal.usuario),
-            selectinload(OrdenServicio.responsable),
+
         )
         .where(OrdenServicio.id == orden_id)
     )
@@ -186,17 +171,15 @@ async def actualizar_orden(
 
     update_data = payload.model_dump(exclude_unset=True)
     estado_actual = (orden.estado_orden or "").upper()
-    if estado_actual in ESTADOS_OS_ARCHIVADA and {
-        "cuadrilla_id",
-        "responsable_id",
-    }.intersection(update_data):
+    if estado_actual in ESTADOS_OS_FINALIZADA and "cuadrilla_id" in update_data:
         raise HTTPException(
             status_code=400,
             detail="No se puede cambiar la asignación de una O.S. archivada.",
         )
 
     estado_nuevo = str(update_data.get("estado_orden", "")).upper()
-    if estado_nuevo in ESTADOS_OS_ARCHIVADA and orden.cuadrilla_snapshot is None:
+    # Lógica de Snapshot si pasa a un estado final (ej. COMPLETADO)
+    if estado_nuevo in ESTADOS_OS_FINALIZADA and orden.cuadrilla_snapshot is None:
         orden.cuadrilla_snapshot = construir_snapshot_cuadrilla(orden.cuadrilla)
 
     for key, value in update_data.items():
@@ -212,7 +195,7 @@ async def actualizar_orden(
             selectinload(OrdenServicio.cuadrilla)
                 .selectinload(Cuadrilla.personal)
                 .selectinload(CuadrillaPersonal.usuario),
-            selectinload(OrdenServicio.responsable),
+
             selectinload(OrdenServicio.reclamo),
         )
         .where(OrdenServicio.id == orden.id)
@@ -262,7 +245,7 @@ async def iniciar_orden(
             selectinload(OrdenServicio.cuadrilla)
                 .selectinload(Cuadrilla.personal)
                 .selectinload(CuadrillaPersonal.usuario),
-            selectinload(OrdenServicio.responsable),
+
             selectinload(OrdenServicio.reclamo),
         )
         .where(OrdenServicio.id == orden.id)
@@ -284,7 +267,7 @@ async def finalizar_orden(
             selectinload(OrdenServicio.cuadrilla)
                 .selectinload(Cuadrilla.personal)
                 .selectinload(CuadrillaPersonal.usuario),
-            selectinload(OrdenServicio.responsable),
+
         )
         .where(OrdenServicio.id == orden_id)
     )
@@ -315,7 +298,6 @@ async def finalizar_orden(
         orden.fecha_ejecucion_inicio = payload.fecha_ejecucion_inicio.replace(tzinfo=None)
     orden.insumos_utilizados = payload.insumos_utilizados
     orden.observaciones_gasfitero = payload.observaciones_gasfitero
-    orden.ruta_carpeta_evidencias = payload.ruta_carpeta_evidencias
     orden.trabajo_ejecutado = payload.trabajo_ejecutado
     orden.problemas = payload.problemas
     orden.soluciones = payload.soluciones
@@ -340,7 +322,7 @@ async def finalizar_orden(
             selectinload(OrdenServicio.cuadrilla)
                 .selectinload(Cuadrilla.personal)
                 .selectinload(CuadrillaPersonal.usuario),
-            selectinload(OrdenServicio.responsable),
+
             selectinload(OrdenServicio.reclamo),
         )
         .where(OrdenServicio.id == orden.id)

@@ -28,9 +28,9 @@ def formatear_codigo_cuadrilla(numero: int) -> str:
 
 
 class RolEnCuadrilla(str, enum.Enum):
-    LIDER = "LIDER"
-    APOYO = "APOYO"
-    CHOFER = "CHOFER"
+    GASFITERO_PRINCIPAL = "GASFITERO_PRINCIPAL"
+    GASFITERO_APOYO = "GASFITERO_APOYO"
+    CHOFER_CAMIONETA = "CHOFER_CAMIONETA"
 
 
 class Cuadrilla(Base):

@@ -30,9 +30,9 @@ router = APIRouter(prefix="/supervisor", tags=["Supervisor"])
 ROLES_SUPERVISORES = {RolUsuario.SUPERVISOR}
 
 ORDEN_ROL_CUADRILLA = {
-    RolEnCuadrilla.LIDER: 0,
-    RolEnCuadrilla.APOYO: 1,
-    RolEnCuadrilla.CHOFER: 2,
+    RolEnCuadrilla.GASFITERO_PRINCIPAL: 0,
+    RolEnCuadrilla.GASFITERO_APOYO: 1,
+    RolEnCuadrilla.CHOFER_CAMIONETA: 2,
 }
 
 
@@ -76,7 +76,7 @@ def _tecnico_response(
         area_visible=areas.get(area_codigo, area_codigo) if area_codigo else None,
         rol_en_cuadrilla=rol.value if rol else None,
         funcion_visible=funcion_visible,
-        es_principal=rol == RolEnCuadrilla.LIDER,
+        es_principal=rol == RolEnCuadrilla.GASFITERO_PRINCIPAL,
         puede_ser_gasfitero=not es_chofer,
         puede_ser_chofer=es_chofer,
         cuadrilla_id=cuadrilla.id if cuadrilla else None,
@@ -138,9 +138,9 @@ async def list_tecnicos_disponibles(
         .join(Cuadrilla)
         .where(
             CuadrillaPersonal.rol_en_cuadrilla.in_([
-                RolEnCuadrilla.LIDER,
-                RolEnCuadrilla.APOYO,
-                RolEnCuadrilla.CHOFER,
+                RolEnCuadrilla.GASFITERO_PRINCIPAL,
+                RolEnCuadrilla.GASFITERO_APOYO,
+                RolEnCuadrilla.CHOFER_CAMIONETA,
             ]),
             Cuadrilla.activo == True
         )
@@ -221,7 +221,6 @@ async def list_ordenes_servicio(
             selectinload(OrdenServicio.cuadrilla)
                 .selectinload(Cuadrilla.personal)
                 .selectinload(CuadrillaPersonal.usuario),
-            selectinload(OrdenServicio.responsable),
             selectinload(OrdenServicio.reclamo),
         )
         .order_by(OrdenServicio.created_at.desc())
@@ -248,15 +247,6 @@ async def list_ordenes_servicio(
                 "email": o.reclamo.email,
                 "fecha_registro": o.reclamo.fecha_registro,
             }
-
-        responsable_data = None
-        if o.responsable:
-            responsable_data = {
-                "id": o.responsable.id,
-                "nombre": o.responsable.nombre,
-                "codigo_empleado": o.responsable.codigo_empleado,
-                "cargo": o.responsable.cargo.value if o.responsable.cargo else None,
-            }
             
         return {
             "id": o.id,
@@ -264,15 +254,13 @@ async def list_ordenes_servicio(
             "reclamo_id": o.reclamo_id,
             "supervisor_id": o.supervisor_id,
             "cuadrilla_id": o.cuadrilla_id,
-            "responsable_id": o.responsable_id,
-            "sector_id": o.sector_id,
+
             "fecha_programacion": o.fecha_programacion,
             "fecha_ejecucion_inicio": o.fecha_ejecucion_inicio,
             "fecha_ejecucion_fin": o.fecha_ejecucion_fin,
             "estado_orden": o.estado_orden,
             "insumos_utilizados": o.insumos_utilizados,
             "observaciones_gasfitero": o.observaciones_gasfitero,
-            "ruta_carpeta_evidencias": o.ruta_carpeta_evidencias,
             "created_at": o.created_at,
             "trabajo_ejecutado": getattr(o, "trabajo_ejecutado", None),
             "problemas": getattr(o, "problemas", None),
@@ -284,7 +272,6 @@ async def list_ordenes_servicio(
             "fotos_solucion_urls": getattr(o, "fotos_solucion_urls", None) or [],
             "reclamo": reclamo_data,
             "cuadrilla": cuadrilla_data,
-            "responsable": responsable_data,
         }
         
     return [_build_os_response(o) for o in ordenes]
@@ -316,7 +303,6 @@ async def crear_orden_servicio(
         ot = await service.crear_desde_reclamo(
             reclamo_id=payload.reclamo_id,
             cuadrilla_id=payload.cuadrilla_id,
-            responsable_id=payload.responsable_id,
             supervisor_id=payload.supervisor_id,
             fecha_programacion=fecha,
             actor=current_user,

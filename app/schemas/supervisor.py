@@ -27,23 +27,12 @@ class TecnicoResponse(BaseModel):
 
 class CrearOrdenServicioRequest(BaseModel):
     reclamo_id: int = Field(..., gt=0, description="ID del reclamo origen")
-    cuadrilla_id: Optional[int] = Field(
-        None, gt=0, description="ID de la cuadrilla asignada"
-    )
-    responsable_id: Optional[int] = Field(
-        None, gt=0, description="ID del gasfitero asignado (asignacion individual a una persona)"
+    cuadrilla_id: int = Field(
+        ..., gt=0, description="ID de la cuadrilla asignada"
     )
     supervisor_id: Optional[int] = Field(None, gt=0)
-    sector_id: Optional[int] = Field(None, gt=0)
-    fecha_programacion: Optional[str] = None
 
-    @model_validator(mode="after")
-    def validar_modo_asignacion(self):
-        if (self.cuadrilla_id is not None) == (self.responsable_id is not None):
-            raise ValueError(
-                "Debe asignarse a una cuadrilla o a un responsable individual, pero no a ambos."
-            )
-        return self
+    fecha_programacion: Optional[str] = None
 
     model_config = ConfigDict(
         str_strip_whitespace=True,

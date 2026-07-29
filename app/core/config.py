@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_KEY: str = ""
     SUPABASE_BUCKET: str = "hydra-files"
     CORS_ORIGINS: str = ""
+    GOOGLE_MAPS_API_KEY: str | None = None
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -32,7 +33,6 @@ class Settings(BaseSettings):
             for origin in self.CORS_ORIGINS.split(",")
             if origin.strip()
         ]
-
     @property
     def async_database_url(self) -> str:
         url = self.DATABASE_URL

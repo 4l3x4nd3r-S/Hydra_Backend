@@ -1,10 +1,7 @@
 import re
 from datetime import datetime
 from typing import Optional
-
 from pydantic import BaseModel, Field, field_validator
-
-
 class _ValidacionesReclamo:
     @field_validator("nombre_solicitante", check_fields=False)
     @classmethod
@@ -14,22 +11,18 @@ class _ValidacionesReclamo:
         if not re.fullmatch(r"[A-Za-zÁÉÍÓÚáéíóúÑñ ]+", valor):
             raise ValueError("Solo se permiten letras y espacios")
         return valor.strip()
-
     @field_validator("codigo_solicitud", check_fields=False)
     @classmethod
     def _codigo_no_solo_ceros(cls, valor: Optional[str]) -> Optional[str]:
         if valor == "00000":
             raise ValueError("El código de solicitud no puede ser 00000")
         return valor
-
     @field_validator("numero_suministro", check_fields=False)
     @classmethod
     def _suministro_no_solo_ceros(cls, valor: Optional[str]) -> Optional[str]:
         if valor == "0000000":
             raise ValueError("El número de suministro no puede ser 0000000")
         return valor
-
-
 class CrearReclamoRequest(_ValidacionesReclamo, BaseModel):
     formato: str = Field(min_length=1, max_length=120)
     codigo_solicitud: str = Field(pattern=r"^\d{5}$")
@@ -43,10 +36,6 @@ class CrearReclamoRequest(_ValidacionesReclamo, BaseModel):
     email: str = Field(pattern=r"^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$")
     numero_suministro: str = Field(pattern=r"^\d{7}$")
     fecha_registro: Optional[datetime] = None
-    latitud: Optional[float] = None
-    longitud: Optional[float] = None
-
-
 class ActualizarReclamoRequest(_ValidacionesReclamo, BaseModel):
     formato: Optional[str] = Field(default=None, max_length=120)
     codigo_solicitud: Optional[str] = Field(default=None, pattern=r"^\d{5}$")
@@ -61,10 +50,6 @@ class ActualizarReclamoRequest(_ValidacionesReclamo, BaseModel):
         default=None, pattern=r"^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$"
     )
     numero_suministro: Optional[str] = Field(default=None, pattern=r"^\d{7}$")
-    latitud: Optional[float] = None
-    longitud: Optional[float] = None
-
-
 class ReclamoResponse(BaseModel):
     id: int
     usuario_id: Optional[int] = None
@@ -73,8 +58,6 @@ class ReclamoResponse(BaseModel):
     formato: Optional[str] = None
     descripcion: Optional[str] = None
     direccion: Optional[str] = None
-    latitud: Optional[float] = None
-    longitud: Optional[float] = None
     estado: Optional[str] = None
     fecha_registro: datetime
     nombre_solicitante: Optional[str] = None
@@ -82,5 +65,4 @@ class ReclamoResponse(BaseModel):
     email: Optional[str] = None
     numero_suministro: Optional[str] = None
     codigo_solicitud: Optional[str] = None
-
     model_config = {"from_attributes": True}

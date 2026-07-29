@@ -110,7 +110,7 @@ async def process_dataloggers(
                     fecha_hora=fecha_hora,
                     presion_mca=float(row['pressure']),
                     temperatura_c=float(row['temperature']) if pd.notnull(row['temperature']) else None,
-                    dispositivo_serie=None
+
                 )
             )
         except Exception as e:

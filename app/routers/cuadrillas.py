@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -46,14 +47,14 @@ def build_detalle(
                 cp.rol_en_cuadrilla.value,
                 cp.rol_en_cuadrilla.value,
             ),
-            es_principal=cp.rol_en_cuadrilla == RolEnCuadrilla.LIDER,
+            es_principal=es_principal_map.get(cp.rol_en_cuadrilla, False),
         )
         match cp.rol_en_cuadrilla:
-            case RolEnCuadrilla.LIDER:
+            case RolEnCuadrilla.GASFITERO_PRINCIPAL:
                 lider = p
-            case RolEnCuadrilla.APOYO:
+            case RolEnCuadrilla.GASFITERO_APOYO:
                 apoyos.append(p)
-            case RolEnCuadrilla.CHOFER:
+            case RolEnCuadrilla.CHOFER_CAMIONETA:
                 chofer = p
 
     return CuadrillaDetalleResponse(
@@ -164,19 +165,19 @@ def _agregar_personal_sync(db, cuadrilla_id: int, personal):
     db.add(CuadrillaPersonal(
         cuadrilla_id=cuadrilla_id,
         usuario_id=personal.lider_id,
-        rol_en_cuadrilla=RolEnCuadrilla.LIDER,
+        rol_en_cuadrilla=RolEnCuadrilla.GASFITERO_PRINCIPAL,
     ))
     for apoyo_id in personal.apoyos_ids:
         db.add(CuadrillaPersonal(
             cuadrilla_id=cuadrilla_id,
             usuario_id=apoyo_id,
-            rol_en_cuadrilla=RolEnCuadrilla.APOYO,
+            rol_en_cuadrilla=RolEnCuadrilla.GASFITERO_APOYO,
         ))
     if personal.chofer_id:
         db.add(CuadrillaPersonal(
             cuadrilla_id=cuadrilla_id,
             usuario_id=personal.chofer_id,
-            rol_en_cuadrilla=RolEnCuadrilla.CHOFER,
+            rol_en_cuadrilla=RolEnCuadrilla.CHOFER_CAMIONETA,
         ))
 
 
@@ -186,7 +187,7 @@ async def _validar_personal_mantenimiento(db: AsyncSession, ids: set[int]) -> No
     if len(usuarios) != len(ids):
         raise HTTPException(status_code=400, detail="Uno o más integrantes no existen.")
     if any(
-        usuario.rol != RolUsuario.GASFITERO
+        usuario.rol not in [RolUsuario.GASFITERO, RolUsuario.CHOFER]
         or usuario.area != AreaUsuario.MANTENIMIENTO
         or not usuario.activo
         for usuario in usuarios
@@ -214,6 +215,37 @@ async def actualizar_cuadrilla(
         await validar_codigo_catalogo(
             db, GRUPO_ESPECIALIDAD, payload.especialidad
         )
+    
+    usuarios_dict = {}
+    if update_data.get("miembros"):
+        ids = [m["usuario_id"] for m in update_data["miembros"]]
+        u_res = await db.execute(select(Usuario).where(Usuario.id.in_(ids)))
+        usuarios_dict = {u.id: u for u in u_res.scalars().all()}
+        
+        for m in update_data["miembros"]:
+            usr = usuarios_dict.get(m["usuario_id"])
+            if not usr:
+                raise HTTPException(status_code=400, detail=f"Usuario {m['usuario_id']} no existe.")
+            
+            if m["rol"] in (RolEnCuadrilla.GASFITERO_PRINCIPAL, RolEnCuadrilla.GASFITERO_APOYO) and usr.rol != RolUsuario.GASFITERO:
+                raise HTTPException(status_code=400, detail=f"El usuario {usr.nombre} no es Gasfitero.")
+            if m["rol"] == RolEnCuadrilla.CHOFER_CAMIONETA and usr.rol != RolUsuario.CHOFER:
+                raise HTTPException(status_code=400, detail=f"El usuario {usr.nombre} no es Chofer.")
+        
+        await db.execute(delete(CuadrillaPersonal).where(CuadrillaPersonal.cuadrilla_id == cuadrilla.id))
+        
+        nuevos_miembros = []
+        for m in update_data["miembros"]:
+            nuevos_miembros.append(
+                CuadrillaPersonal(
+                    cuadrilla_id=cuadrilla.id,
+                    usuario_id=m["usuario_id"],
+                    rol_en_cuadrilla=RolEnCuadrilla(m["rol"])
+                )
+            )
+        db.add_all(nuevos_miembros)
+        del update_data["miembros"]
+
     for key, value in update_data.items():
         setattr(cuadrilla, key, value)
 
@@ -269,7 +301,7 @@ async def actualizar_personal_cuadrilla(
         (
             integrante.usuario_id
             for integrante in cuadrilla.personal
-            if integrante.rol_en_cuadrilla == RolEnCuadrilla.LIDER
+            if integrante.rol_en_cuadrilla == RolEnCuadrilla.GASFITERO_PRINCIPAL
         ),
         None,
     )
@@ -339,6 +371,11 @@ async def eliminar_cuadrilla(
     await db.commit()
 
 
+class MiembroCuadrillaRequest(BaseModel):
+    usuario_id: int
+    rol: RolEnCuadrilla = RolEnCuadrilla.GASFITERO_APOYO
+
+
 @router.post(
     "/{cuadrilla_id}/personal/{usuario_id}",
     status_code=status.HTTP_201_CREATED,
@@ -347,7 +384,7 @@ async def eliminar_cuadrilla(
 async def agregar_personal(
     cuadrilla_id: int,
     usuario_id: int,
-    rol: RolEnCuadrilla = RolEnCuadrilla.APOYO,
+    rol: RolEnCuadrilla = RolEnCuadrilla.GASFITERO_APOYO,
     current_user: Usuario = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):

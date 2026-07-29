@@ -9,7 +9,7 @@ class CrearRegistroPresionRequest(BaseModel):
     fecha_hora: datetime
     presion_mca: float
     temperatura_c: Optional[float] = None
-    dispositivo_serie: Optional[str] = None
+
 
 
 class RegistroPresionResponse(BaseModel):
@@ -18,7 +18,7 @@ class RegistroPresionResponse(BaseModel):
     fecha_hora: datetime
     presion_mca: float
     temperatura_c: Optional[float] = None
-    dispositivo_serie: Optional[str] = None
+
 
     model_config = {"from_attributes": True}
 

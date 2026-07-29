@@ -36,13 +36,13 @@ class CuadrillasMantenimientoTest(unittest.TestCase):
         pertenencia = CuadrillaPersonal(
             usuario=usuario,
             cuadrilla=cuadrilla,
-            rol_en_cuadrilla=RolEnCuadrilla.APOYO,
+            rol_en_cuadrilla=RolEnCuadrilla.GASFITERO_APOYO,
         )
         usuario.cuadrillas = [pertenencia]
 
         response = _tecnico_response(
             usuario,
-            {"APOYO": "Gasfitero de apoyo"},
+            {"GASFITERO_APOYO": "Gasfitero de apoyo"},
             {"MANTENIMIENTO": "Mantenimiento"},
             {"GASFITERO": "Gasfitero"},
         )
@@ -51,7 +51,7 @@ class CuadrillasMantenimientoTest(unittest.TestCase):
         self.assertEqual(response.dni, "71234567")
         self.assertEqual(response.celular, "912345678")
         self.assertFalse(response.es_principal)
-        self.assertEqual(response.rol_en_cuadrilla, "APOYO")
+        self.assertEqual(response.rol_en_cuadrilla, "GASFITERO_APOYO")
         self.assertEqual(response.cuadrilla_id, 3)
         self.assertEqual(response.codigo_cuadrilla, "Cuadrilla 003")
         self.assertTrue(response.puede_ser_gasfitero)

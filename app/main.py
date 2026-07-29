@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.logging_config import setup_logging
 from app.core.exception_handlers import value_error_handler, unhandled_exception_handler
-from app.routers import auth, usuarios, sectores, puntos_presion, registros_presion, reclamos, cuadrillas, elementos_red, ordenes_servicio, supervisor, uploads, catalogos
+from app.routers import auth, usuarios, sectores, puntos_presion, registros_presion, reclamos, cuadrillas, elementos_red, ordenes_servicio, supervisor, uploads, catalogos, ml_router
 
 setup_logging()
 
@@ -48,6 +48,7 @@ app.include_router(ordenes_servicio.router, prefix="/api/v1")
 app.include_router(supervisor.router, prefix="/api/v1")
 app.include_router(uploads.router, prefix="/api/v1")
 app.include_router(catalogos.router, prefix="/api/v1")
+app.include_router(ml_router.router, prefix="/api/v1")
 
 @app.get("/health", tags=["Sistema"], summary="Estado del servidor")
 @app.head("/health", tags=["Sistema"], summary="Estado del servidor (UptimeRobot)")

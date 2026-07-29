@@ -24,23 +24,15 @@ class OrdenServicioService:
         self,
         *,
         reclamo_id: int,
-        cuadrilla_id: int | None,
-        responsable_id: int | None,
+        cuadrilla_id: int,
         supervisor_id: int | None,
         fecha_programacion: datetime | None,
         actor: Usuario,
     ) -> OrdenServicio:
-        if (cuadrilla_id is not None) == (responsable_id is not None):
-            raise ValueError(
-                "Debe asignarse a una cuadrilla o a un responsable individual, pero no a ambos."
-            )
 
         reclamo = await self._validar_reclamo_sin_os_activa(reclamo_id)
 
-        if cuadrilla_id is not None:
-            await self._validar_cuadrilla_compatible(cuadrilla_id, reclamo.formato)
-        if responsable_id is not None:
-            await self._validar_responsable_gasfitero(responsable_id)
+        await self._validar_cuadrilla_compatible(cuadrilla_id, reclamo.formato)
 
         numero_orden = await self._generar_numero_orden()
 
@@ -49,8 +41,7 @@ class OrdenServicioService:
             reclamo_id=reclamo_id,
             supervisor_id=supervisor_id or actor.id,
             cuadrilla_id=cuadrilla_id,
-            responsable_id=responsable_id,
-            sector_id=None,
+
             fecha_programacion=fecha_programacion,
             estado_orden="ASIGNADO",
         )
@@ -60,17 +51,20 @@ class OrdenServicioService:
         reclamo.estado = "ASIGNADO"
         self._db.add(reclamo)
 
+        # Hacemos flush para que la base de datos asigne el ID a la O.S. (ot.id)
+        await self._db.flush()
+
         auditoria = AuditoriaEvento(
             usuario_id=actor.id,
             usuario_nombre=actor.nombre,
             rol=actor.rol.value if actor.rol else None,
             accion="OS_CREADA",
             entidad="orden_servicio",
+            entidad_id=ot.id,
             detalles={
                 "numero_orden": numero_orden,
                 "reclamo_id": reclamo_id,
                 "cuadrilla_id": cuadrilla_id,
-                "responsable_id": responsable_id,
                 "supervisor_id": supervisor_id or actor.id,
                 "reclamo_estado_anterior": estado_anterior_reclamo,
                 "reclamo_estado_nuevo": "ASIGNADO",
@@ -88,7 +82,6 @@ class OrdenServicioService:
                 selectinload(OrdenServicio.cuadrilla)
                     .selectinload(Cuadrilla.personal)
                     .selectinload(CuadrillaPersonal.usuario),
-                selectinload(OrdenServicio.responsable),
                 selectinload(OrdenServicio.supervisor),
             )
             .where(OrdenServicio.id == ot.id)
@@ -157,13 +150,4 @@ class OrdenServicioService:
                 f"asignarse a cuadrillas de {especialidad_requerida}."
             )
 
-    async def _validar_responsable_gasfitero(self, usuario_id: int) -> None:
-        result = await self._db.execute(
-            select(Usuario).where(
-                Usuario.id == usuario_id,
-                Usuario.rol == RolUsuario.GASFITERO,
-                Usuario.activo == True,
-            )
-        )
-        if not result.scalars().first():
-            raise ValueError("El responsable no es un gasfitero activo.")
+
