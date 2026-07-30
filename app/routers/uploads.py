@@ -88,8 +88,13 @@ async def upload_dataloggers(
         # 2. Llamar al procesador PRIMERO (Si hay duplicados o fechas inválidas, lanzará error y se detiene aquí)
         resultado = await process_dataloggers(files_data, db, origen, fecha)
         
-        # 3. Solo si la base de datos aceptó los datos, guardamos los Excels en Storage
+        # 3. Solo si la base de datos aceptó los datos y no fue omitido, guardamos los Excels en Storage
+        archivos_procesados = resultado.get("archivos_procesados", [])
+        
         for file_data in files_data:
+            if file_data["filename"] not in archivos_procesados:
+                continue # Omitir subir archivos que ya existían en BD o que fueron filtrados
+                
             origen_limpio = origen.replace(' ', '_')
             unique_name = f"{uuid.uuid4()}_{file_data['filename']}"
             ruta_completa_storage = f"dataloggers/{origen_limpio}/{fecha}/{unique_name}"

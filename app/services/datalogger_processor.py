@@ -20,7 +20,29 @@ async def process_dataloggers(
     `files_data` debe ser una lista de dicts: {"filename": str, "content": bytes}
     `fecha_esperada` es el mes indicado por el usuario (ej. "2024-01") para validar.
     """
+    from sqlalchemy import text
+    
+    # 0. Consultar qué puntos ya tienen datos para este origen y mes, para omitirlos completamente
+    puntos_existentes = set()
+    if fecha_esperada:
+        try:
+            exp_year, exp_month = map(int, fecha_esperada.split("-"))
+            query = text("""
+                SELECT DISTINCT pp.codigo_punto 
+                FROM registros_presion rp
+                JOIN puntos_presion pp ON rp.punto_presion_id = pp.id
+                WHERE pp.origen = :origen 
+                  AND EXTRACT(YEAR FROM rp.fecha_hora) = :year
+                  AND EXTRACT(MONTH FROM rp.fecha_hora) = :month
+            """)
+            rows = await db.execute(query, {"origen": origen, "year": exp_year, "month": exp_month})
+            puntos_existentes = {r[0] for r in rows}
+        except ValueError:
+            pass
+            
     lista_dataframes = []
+    archivos_procesados = []
+    archivos_omitidos = []
     
     # 1. Procesar cada archivo en memoria con pandas
     for file_info in files_data:
@@ -29,8 +51,6 @@ async def process_dataloggers(
         
         try:
             # Extraer el punto de presión del nombre del archivo (ej. "...P-32.xlsx" -> "P-32")
-            # Se asume que el formato siempre termina en P-XX.xlsx o P-XXX.xlsx
-            # Una forma más robusta con regex:
             import re
             match = re.search(r'(P-\d+)', filename.upper())
             if not match:
@@ -38,6 +58,11 @@ async def process_dataloggers(
             
             codigo_punto = match.group(1)
             
+            # Si el punto ya existe en la BD para este mes, omitir el archivo por completo
+            if codigo_punto in puntos_existentes:
+                archivos_omitidos.append(filename)
+                continue
+                
             # Leer el excel (saltando la cabecera) de forma asíncrona para no bloquear el servidor
             import asyncio
             loop = asyncio.get_event_loop()
@@ -58,13 +83,10 @@ async def process_dataloggers(
                 df_temp.rename(columns={'Presión (psi)': 'Presión (mH2O)'}, inplace=True)
                 
             # Validar que tengamos las 3 columnas esperadas (Tiempo, Temperatura, Presión)
-            # En caso que falte la temperatura o cambie el orden, asumimos el orden:
-            # time, temperature, pressure
             if len(df_temp.columns) >= 3:
                 df_temp = df_temp.iloc[:, :3]
                 df_temp.columns = ['time', 'temperature', 'pressure']
             else:
-                # Si solo hay tiempo y presión
                 df_temp.columns = ['time', 'pressure']
                 df_temp['temperature'] = None
                 
@@ -94,12 +116,19 @@ async def process_dataloggers(
                             raise ve
             
             lista_dataframes.append(df_temp)
+            archivos_procesados.append(filename)
             
         except Exception as e:
             print(f"Error procesando {filename}: {e}")
             raise ValueError(f"Error procesando {filename}: {str(e)}")
 
     if not lista_dataframes:
+        if archivos_omitidos:
+            return {
+                "success": True, 
+                "message": f"Todos los archivos subidos ({len(archivos_omitidos)}) ya existían en la base de datos y fueron omitidos. No se subió nada nuevo al Storage.", 
+                "archivos_procesados": []
+            }
         return {"success": False, "message": "No se encontraron datos válidos para procesar."}
 
     # Unir todo
@@ -177,7 +206,8 @@ async def process_dataloggers(
             return {
                 "success": True, 
                 "message": f"Se procesaron {len(valores_a_insertar)} registros correctamente (omitiendo duplicados automáticamente).",
-                "inserted": len(valores_a_insertar)
+                "inserted": len(valores_a_insertar),
+                "archivos_procesados": archivos_procesados
             }
         except Exception as e:
             await db.rollback()
