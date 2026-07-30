@@ -127,18 +127,38 @@ async def process_dataloggers(
             print(f"Error en fila: {row} - {e}")
             continue
 
-    # 4. Insertar en base de datos
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+    # 4. Insertar en base de datos (con ON CONFLICT DO NOTHING)
     if registros_a_insertar:
-        db.add_all(registros_a_insertar)
+        valores_a_insertar = []
+        for r in registros_a_insertar:
+            valores_a_insertar.append({
+                "punto_presion_id": r.punto_presion_id,
+                "fecha_hora": r.fecha_hora,
+                "presion_mca": r.presion_mca,
+                "temperatura_c": r.temperatura_c,
+                "zona": r.zona,
+                "origen": r.origen
+            })
+            
         try:
+            # Insertar por lotes para evitar el límite de parámetros de Postgres
+            batch_size = 5000
+            for i in range(0, len(valores_a_insertar), batch_size):
+                batch = valores_a_insertar[i:i + batch_size]
+                stmt = pg_insert(RegistroPresion).values(batch)
+                stmt = stmt.on_conflict_do_nothing(constraint="uq_punto_timestamp")
+                await db.execute(stmt)
+                
             await db.commit()
             return {
                 "success": True, 
-                "message": f"Se procesaron e insertaron {len(registros_a_insertar)} registros correctamente.",
-                "inserted": len(registros_a_insertar)
+                "message": f"Se procesaron {len(valores_a_insertar)} registros correctamente (omitiendo duplicados automáticamente).",
+                "inserted": len(valores_a_insertar)
             }
         except Exception as e:
             await db.rollback()
-            raise ValueError(f"Error al guardar en la base de datos: {str(e)} (Posibles registros duplicados)")
+            raise ValueError(f"Error al guardar en la base de datos: {str(e)}")
             
     return {"success": False, "message": "No hay registros para insertar"}
