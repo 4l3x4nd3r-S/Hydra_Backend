@@ -100,7 +100,7 @@ async def upload_dataloggers(
             })
             
         # Llamar al procesador
-        resultado = await process_dataloggers(files_data, db)
+        resultado = await process_dataloggers(files_data, db, origen)
         resultado["backup_urls"] = urls_guardadas
         
         return JSONResponse(status_code=200, content=resultado)

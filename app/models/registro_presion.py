@@ -12,6 +12,8 @@ class RegistroPresion(Base):
     fecha_hora = Column(DateTime, nullable=False)
     presion_mca = Column(Float, nullable=False)
     temperatura_c = Column(Float, nullable=True)
+    zona = Column(String(50), nullable=True)
+    origen = Column(String(100), nullable=True)
 
 
     __table_args__ = (UniqueConstraint("punto_presion_id", "fecha_hora", name="uq_punto_timestamp"),)

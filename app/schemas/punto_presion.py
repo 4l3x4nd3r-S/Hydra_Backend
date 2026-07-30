@@ -9,6 +9,8 @@ class CrearPuntoPresionRequest(BaseModel):
     latitud: Optional[float] = None
     longitud: Optional[float] = None
     sector_id: Optional[int] = None
+    zona: Optional[str] = None
+    origen: Optional[str] = None
 
 
 class ActualizarPuntoPresionRequest(BaseModel):
@@ -16,6 +18,8 @@ class ActualizarPuntoPresionRequest(BaseModel):
     latitud: Optional[float] = None
     longitud: Optional[float] = None
     sector_id: Optional[int] = None
+    zona: Optional[str] = None
+    origen: Optional[str] = None
 
 
 class PuntoPresionResponse(BaseModel):
@@ -24,6 +28,8 @@ class PuntoPresionResponse(BaseModel):
     latitud: Optional[float] = None
     longitud: Optional[float] = None
     sector_id: Optional[int] = None
+    zona: Optional[str] = None
+    origen: Optional[str] = None
     created_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}

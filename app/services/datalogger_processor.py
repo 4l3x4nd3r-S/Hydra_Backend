@@ -11,7 +11,8 @@ from app.models.registro_presion import RegistroPresion
 
 async def process_dataloggers(
     files_data: List[dict],
-    db: AsyncSession
+    db: AsyncSession,
+    origen: str
 ) -> dict:
     """
     Procesa un lote de archivos Excel de dataloggers subidos desde el frontend.
@@ -82,12 +83,18 @@ async def process_dataloggers(
     # Unir todo
     df_consolidado = pd.concat(lista_dataframes, ignore_index=True)
     
-    # 2. Mapear códigos de punto de presión a sus IDs en la base de datos
+    # 2. Mapear códigos de punto de presión a sus objetos en la base de datos
     codigos_unicos = df_consolidado['codigo_punto'].unique().tolist()
     
-    result = await db.execute(select(PuntoPresion).where(PuntoPresion.codigo_punto.in_(codigos_unicos)))
+    result = await db.execute(
+        select(PuntoPresion)
+        .where(
+            PuntoPresion.codigo_punto.in_(codigos_unicos),
+            PuntoPresion.origen == origen
+        )
+    )
     puntos_db = result.scalars().all()
-    mapa_puntos = {p.codigo_punto: p.id for p in puntos_db}
+    mapa_puntos = {p.codigo_punto: p for p in puntos_db}
     
     # Identificar si hay puntos que no existen en la BD
     puntos_faltantes = [cod for cod in codigos_unicos if cod not in mapa_puntos]
@@ -104,13 +111,16 @@ async def process_dataloggers(
             else:
                 fecha_hora = row['time'] # Si ya es un objeto datetime o timestamp
                 
+            punto_obj = mapa_puntos[row['codigo_punto']]
+                
             registros_a_insertar.append(
                 RegistroPresion(
-                    punto_presion_id=mapa_puntos[row['codigo_punto']],
+                    punto_presion_id=punto_obj.id,
                     fecha_hora=fecha_hora,
                     presion_mca=float(row['pressure']),
                     temperatura_c=float(row['temperature']) if pd.notnull(row['temperature']) else None,
-
+                    zona=punto_obj.zona,
+                    origen=punto_obj.origen
                 )
             )
         except Exception as e:
