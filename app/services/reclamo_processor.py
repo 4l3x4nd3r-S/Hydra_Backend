@@ -67,13 +67,35 @@ async def process_reclamos_background(content: bytes, filename: str, job_id: str
     upload_jobs[job_id] = {"status": "starting", "total": 0, "processed": 0, "error": None}
     print(f"Iniciando procesamiento de reclamos para {filename} (Job: {job_id})...")
     try:
-        complaints_columns = ['N° Reclamo', 'Cod Cliente', 'Dirección', 'Fecha Reclamo', 'Tipo Reclamo']
         # Leer excel en un thread separado para no bloquear el servidor
         loop = asyncio.get_event_loop()
         df = await loop.run_in_executor(
             None,
-            lambda c=content, cols=complaints_columns: pd.read_excel(io.BytesIO(c), skiprows=10, usecols=cols)
+            lambda c=content: pd.read_excel(io.BytesIO(c), skiprows=10)
         )
+        
+        # Mapeo dinámico de columnas para soportar variaciones de formato
+        col_map = {}
+        for col in df.columns:
+            col_upper = str(col).upper()
+            if 'RECLAMO' in col_upper and ('N°' in col_upper or 'N' in col_upper) and 'TIPO' not in col_upper: 
+                col_map[col] = 'N° Reclamo'
+            elif 'CLIENTE' in col_upper: 
+                col_map[col] = 'Cod Cliente'
+            elif 'DIRECCI' in col_upper or 'DESCRIPCION' in col_upper: 
+                col_map[col] = 'Dirección'
+            elif 'FECHA' in col_upper and 'RECLAMO' in col_upper: 
+                col_map[col] = 'Fecha Reclamo'
+            elif 'TIPO' in col_upper and 'RECLAMO' in col_upper: 
+                col_map[col] = 'Tipo Reclamo'
+                
+        df = df.rename(columns=col_map)
+        
+        # Validar que se hayan encontrado las necesarias
+        required = ['N° Reclamo', 'Cod Cliente', 'Dirección', 'Fecha Reclamo', 'Tipo Reclamo']
+        missing = [r for r in required if r not in df.columns]
+        if missing:
+            raise ValueError(f"Faltan columnas requeridas o no se pudieron deducir: {missing}")
         
         # Transformar fechas
         df['Fecha Reclamo'] = pd.to_datetime(df['Fecha Reclamo'], format='%d/%m/%Y', dayfirst=True, errors='coerce')
