@@ -22,12 +22,12 @@ async def fetch_and_prepare_data():
     async with engine.begin() as conn:
         # 1. Traer puntos de presion y sus coordenadas para asignar reclamos
         puntos_df = await conn.run_sync(lambda sync_conn: pd.read_sql(
-            "SELECT id as punto_id, origen, codigo_punto, latitud, longitud FROM puntos_presion WHERE latitud IS NOT NULL", sync_conn
+            text("SELECT id as punto_id, origen, codigo_punto, latitud, longitud FROM puntos_presion WHERE latitud IS NOT NULL"), sync_conn
         ))
         
         # 2. Reclamos Historicos (fugas y operativos)
         reclamos_df = await conn.run_sync(lambda sync_conn: pd.read_sql(
-            "SELECT fecha_registro, latitud, longitud, tipo_problema FROM reclamos_historicos WHERE latitud IS NOT NULL", sync_conn
+            text("SELECT fecha_registro, latitud, longitud, tipo_problema FROM reclamos_historicos WHERE latitud IS NOT NULL"), sync_conn
         ))
         
         # 3. Registros de Presion (features)
