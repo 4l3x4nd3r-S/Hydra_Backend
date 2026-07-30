@@ -1,14 +1,70 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, text
+from typing import List
 
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.usuario import Usuario
 from app.models.punto_presion import PuntoPresion
-from app.schemas.punto_presion import CrearPuntoPresionRequest, ActualizarPuntoPresionRequest, PuntoPresionResponse
+from app.schemas.punto_presion import (
+    CrearPuntoPresionRequest, ActualizarPuntoPresionRequest, PuntoPresionResponse,
+    HistorialPuntoResponse, MetricasMes
+)
 
 router = APIRouter(prefix="/puntos-presion", tags=["Puntos de Presión"])
+
+@router.get("/{punto_id}/metricas", response_model=HistorialPuntoResponse, summary="Obtener historial de métricas agrupadas por mes")
+async def get_metricas_punto(
+    punto_id: int,
+    limit: int = Query(12, description="Cantidad máxima de meses a devolver"),
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    # Validar que existe
+    result = await db.execute(select(PuntoPresion).where(PuntoPresion.id == punto_id))
+    punto = result.scalars().first()
+    if not punto:
+        raise HTTPException(status_code=404, detail="Punto de presión no encontrado.")
+
+    # Hacer la consulta agregada en BD
+    query = text("""
+        SELECT 
+            CAST(EXTRACT(YEAR FROM fecha_hora) AS INTEGER) as year,
+            CAST(EXTRACT(MONTH FROM fecha_hora) AS INTEGER) as month,
+            MIN(presion_mca) as p_min,
+            MAX(presion_mca) as p_max,
+            AVG(presion_mca) as p_mean,
+            MIN(temperatura_c) as t_min,
+            MAX(temperatura_c) as t_max,
+            AVG(temperatura_c) as t_mean
+        FROM registros_presion
+        WHERE punto_presion_id = :punto_id
+        GROUP BY year, month
+        ORDER BY year DESC, month DESC
+        LIMIT :limit
+    """)
+    
+    rows = await db.execute(query, {"punto_id": punto_id, "limit": limit})
+    
+    metricas = []
+    for r in rows:
+        metricas.append(MetricasMes(
+            year=r[0],
+            month=r[1],
+            presion_min=round(float(r[2]), 2) if r[2] is not None else None,
+            presion_max=round(float(r[3]), 2) if r[3] is not None else None,
+            presion_prom=round(float(r[4]), 2) if r[4] is not None else None,
+            temp_min=round(float(r[5]), 2) if r[5] is not None else None,
+            temp_max=round(float(r[6]), 2) if r[6] is not None else None,
+            temp_prom=round(float(r[7]), 2) if r[7] is not None else None
+        ))
+        
+    return HistorialPuntoResponse(
+        codigo_punto=punto.codigo_punto,
+        metricas=metricas
+    )
+
 
 
 @router.get("", response_model=list[PuntoPresionResponse], summary="Listar puntos de presión")

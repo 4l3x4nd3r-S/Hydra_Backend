@@ -27,3 +27,17 @@ class PuntoPresionResponse(BaseModel):
     created_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
+
+class MetricasMes(BaseModel):
+    year: int
+    month: int
+    presion_min: Optional[float] = None
+    presion_max: Optional[float] = None
+    presion_prom: Optional[float] = None
+    temp_min: Optional[float] = None
+    temp_max: Optional[float] = None
+    temp_prom: Optional[float] = None
+
+class HistorialPuntoResponse(BaseModel):
+    codigo_punto: str
+    metricas: list[MetricasMes]
