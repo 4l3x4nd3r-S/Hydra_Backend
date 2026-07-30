@@ -3,11 +3,16 @@ import pandas as pd
 from typing import Dict, Any
 
 from app.services.ml_service import train_model, predict_risk, fetch_and_prepare_data
+from app.core.security import get_current_user
+from app.models.usuario import Usuario
 
 router = APIRouter(prefix="/ml", tags=["Machine Learning"])
 
 @router.post("/train")
-async def trigger_training(background_tasks: BackgroundTasks) -> Dict[str, Any]:
+async def trigger_training(
+    background_tasks: BackgroundTasks,
+    current_user: Usuario = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Desencadena el entrenamiento del modelo de predicción de fugas.
     Esto se ejecuta de forma síncrona/asíncrona. Si el panel es grande, debería 
@@ -19,7 +24,9 @@ async def trigger_training(background_tasks: BackgroundTasks) -> Dict[str, Any]:
     return result
 
 @router.get("/predict")
-async def get_predictions() -> Dict[str, Any]:
+async def get_predictions(
+    current_user: Usuario = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Devuelve las predicciones de riesgo de fuga para el próximo mes 
     basándose en el último mes de datos registrados.

@@ -68,6 +68,7 @@ async def get_metricas_punto(
 
 @router.get("/cobertura/arbol", summary="Obtener árbol de cobertura de dataloggers")
 async def get_cobertura_dataloggers(
+    current_user: Usuario = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """

@@ -291,13 +291,29 @@ def predict_risk(month_data: pd.DataFrame) -> dict:
     
     proba = model.predict_proba(X)[:, 1]
     
+    # Calcular percentiles dinámicos para ranking de prioridad
+    # Top 15% más riesgoso = ALTO, siguiente 25% = MEDIO
+    p_alto = np.percentile(proba, 85) if len(proba) > 0 else 0.6
+    p_medio = np.percentile(proba, 60) if len(proba) > 0 else 0.3
+    
     results = []
     for i, row in month_data.iterrows():
+        prob = float(proba[i])
+        
+        # Asignar nivel basado en prioridad relativa
+        # (siempre y cuando haya algo de riesgo > 1% para evitar falsas alarmas absolutas si todo está perfecto)
+        if prob >= p_alto and prob > 0.01:
+            risk = "ALTO"
+        elif prob >= p_medio and prob > 0.01:
+            risk = "MEDIO"
+        else:
+            risk = "BAJO"
+            
         results.append({
             "origen": row.get('origin', 'Desconocido'),
             "pressure_point": row.get('pressure_point', 'Desconocido'),
-            "risk_probability": round(float(proba[i]), 3),
-            "risk_level": "ALTO" if proba[i] > 0.6 else ("MEDIO" if proba[i] > 0.3 else "BAJO")
+            "risk_probability": round(prob, 3),
+            "risk_level": risk
         })
         
     return {"predictions": results}

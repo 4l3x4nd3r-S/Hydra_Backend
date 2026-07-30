@@ -10,6 +10,8 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.services.datalogger_processor import process_dataloggers
 from app.services.reclamo_processor import process_reclamos_background, upload_jobs
+from app.core.security import get_current_user
+from app.models.usuario import Usuario
 
 router = APIRouter(prefix="/uploads", tags=["Uploads"])
 
@@ -41,7 +43,10 @@ def upload_to_supabase(file_bytes: bytes, filename: str, content_type: str, buck
 
 
 @router.post("/evidencias", summary="Subir imagen de evidencia (Órdenes de Servicio)")
-async def upload_evidencia(file: UploadFile = File(...)):
+async def upload_evidencia(
+    file: UploadFile = File(...),
+    current_user: Usuario = Depends(get_current_user)
+):
     """
     Sube una imagen de evidencia para una orden de servicio. 
     (Ej. foto del problema antes de reparar, o foto de la solución terminada).
@@ -67,6 +72,7 @@ async def upload_dataloggers(
     files: List[UploadFile] = File(...),
     origen: str = Form(...),
     fecha: str = Form(...),
+    current_user: Usuario = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     if not files:
@@ -116,7 +122,10 @@ async def upload_dataloggers(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error procesando dataloggers: {str(e)}")
 @router.get("/reclamos/status/{job_id}", summary="Ver estado de subida de reclamos")
-async def get_reclamos_upload_status(job_id: str):
+async def get_reclamos_upload_status(
+    job_id: str,
+    current_user: Usuario = Depends(get_current_user)
+):
     job = upload_jobs.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job no encontrado")
@@ -126,6 +135,7 @@ async def get_reclamos_upload_status(job_id: str):
 async def upload_reclamos(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    current_user: Usuario = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     if not file:
