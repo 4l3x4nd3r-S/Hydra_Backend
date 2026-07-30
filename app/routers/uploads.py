@@ -152,15 +152,24 @@ async def upload_reclamos(
         
         try:
             # Leer solo las primeras filas para ser súper rápidos, pero en un thread separado para no bloquear el Event Loop
-            complaints_columns = ['N° Reclamo', 'Cod Cliente']
             import asyncio
             loop = asyncio.get_event_loop()
             df_check = await loop.run_in_executor(
                 None,
-                lambda c=file_bytes, cols=complaints_columns: pd.read_excel(io.BytesIO(c), skiprows=10, usecols=cols, nrows=5)
+                lambda c=file_bytes: pd.read_excel(io.BytesIO(c), skiprows=10, nrows=5)
             )
             
-            if not df_check.empty:
+            # Mapeo dinámico de columnas
+            col_map = {}
+            for col in df_check.columns:
+                col_upper = str(col).upper()
+                if 'RECLAMO' in col_upper and ('N°' in col_upper or 'N' in col_upper) and 'TIPO' not in col_upper: 
+                    col_map[col] = 'N° Reclamo'
+                elif 'CLIENTE' in col_upper: 
+                    col_map[col] = 'Cod Cliente'
+            df_check = df_check.rename(columns=col_map)
+            
+            if not df_check.empty and 'N° Reclamo' in df_check.columns and 'Cod Cliente' in df_check.columns:
                 primer_reclamo = str(df_check.iloc[0]['N° Reclamo']).strip()
                 if primer_reclamo.endswith('.0'): primer_reclamo = primer_reclamo[:-2]
                 
