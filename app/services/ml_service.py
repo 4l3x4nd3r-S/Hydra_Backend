@@ -22,7 +22,7 @@ async def fetch_and_prepare_data():
     async with engine.begin() as conn:
         # 1. Traer puntos de presion y sus coordenadas para asignar reclamos
         puntos_df = await conn.run_sync(lambda sync_conn: pd.read_sql(
-            "SELECT codigo_punto, latitud, longitud FROM puntos_presion WHERE latitud IS NOT NULL", sync_conn
+            "SELECT id as punto_id, origen, codigo_punto, latitud, longitud FROM puntos_presion WHERE latitud IS NOT NULL", sync_conn
         ))
         
         # 2. Reclamos Historicos (fugas y operativos)
@@ -35,6 +35,7 @@ async def fetch_and_prepare_data():
         presion_query = """
             WITH diffs AS (
                 SELECT 
+                    pp.origen,
                     pp.codigo_punto as pressure_point,
                     EXTRACT(YEAR FROM rp.fecha_hora) as year,
                     EXTRACT(MONTH FROM rp.fecha_hora) as month,
@@ -49,6 +50,7 @@ async def fetch_and_prepare_data():
                 FROM diffs
             )
             SELECT 
+                d.origen,
                 d.pressure_point,
                 CAST(d.year AS INTEGER) as year,
                 CAST(d.month AS INTEGER) as month,
@@ -65,7 +67,7 @@ async def fetch_and_prepare_data():
                 CAST(SUM(CASE WHEN d.pressure_diff < t.drop_threshold THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) as sudden_drop_rate
             FROM diffs d
             CROSS JOIN thresholds t
-            GROUP BY d.pressure_point, d.year, d.month
+            GROUP BY d.origen, d.pressure_point, d.year, d.month
         """
         loggers_df = await conn.run_sync(lambda sync_conn: pd.read_sql(text(presion_query), sync_conn))
         
@@ -74,6 +76,7 @@ async def fetch_and_prepare_data():
         tree = cKDTree(puntos_df[['latitud', 'longitud']].values)
         dists, idxs = tree.query(reclamos_df[['latitud', 'longitud']].values)
         reclamos_df['pressure_point'] = puntos_df.iloc[idxs]['codigo_punto'].values
+        reclamos_df['origin'] = puntos_df.iloc[idxs]['origen'].values
         reclamos_df['year'] = pd.to_datetime(reclamos_df['fecha_registro']).dt.year
         reclamos_df['month'] = pd.to_datetime(reclamos_df['fecha_registro']).dt.month
         
@@ -103,19 +106,16 @@ async def fetch_and_prepare_data():
         reclamos_fuga = reclamos_df[reclamos_df['is_fuga']]
         reclamos_op = reclamos_df[reclamos_df['is_operational']]
         
-        t_fuga = reclamos_fuga.groupby(['pressure_point', 'year', 'month']).size().reset_index(name='n_fuga')
-        t_op = reclamos_op.groupby(['pressure_point', 'year', 'month']).size().reset_index(name='n_operativos')
+        t_fuga = reclamos_fuga.groupby(['origin', 'pressure_point', 'year', 'month']).size().reset_index(name='n_fuga')
+        t_op = reclamos_op.groupby(['origin', 'pressure_point', 'year', 'month']).size().reset_index(name='n_operativos')
         
-        targets = t_fuga.merge(t_op, on=['pressure_point', 'year', 'month'], how='outer')
+        targets = t_fuga.merge(t_op, on=['origin', 'pressure_point', 'year', 'month'], how='outer')
         targets['n_fuga'] = targets['n_fuga'].fillna(0)
         targets['n_operativos'] = targets['n_operativos'].fillna(0)
     else:
-        targets = pd.DataFrame(columns=['pressure_point', 'year', 'month', 'n_fuga', 'n_operativos'])
+        targets = pd.DataFrame(columns=['origin', 'pressure_point', 'year', 'month', 'n_fuga', 'n_operativos'])
         
     # Merge loggers con targets
-    loggers_df['origin'] = 'hydra'
-    targets['origin'] = 'hydra'
-    
     panel = loggers_df.merge(targets, on=['origin', 'pressure_point', 'year', 'month'], how='left')
     
     if not targets.empty:
@@ -288,6 +288,7 @@ def predict_risk(month_data: pd.DataFrame) -> dict:
     results = []
     for i, row in month_data.iterrows():
         results.append({
+            "origen": row.get('origen', 'Desconocido'),
             "pressure_point": row.get('pressure_point', 'Desconocido'),
             "risk_probability": round(float(proba[i]), 3),
             "risk_level": "ALTO" if proba[i] > 0.6 else ("MEDIO" if proba[i] > 0.3 else "BAJO")
