@@ -20,14 +20,18 @@ MODEL_DIR.mkdir(parents=True, exist_ok=True)
 async def fetch_and_prepare_data():
     """Descarga los datos agregados desde la BD y construye el panel de ML"""
     async with engine.begin() as conn:
+        def _run_query(sync_conn, q):
+            res = sync_conn.execute(text(q))
+            return pd.DataFrame(res.fetchall(), columns=res.keys())
+
         # 1. Traer puntos de presion y sus coordenadas para asignar reclamos
-        puntos_df = await conn.run_sync(lambda sync_conn: pd.read_sql(
-            text("SELECT id as punto_id, origen, codigo_punto, latitud, longitud FROM puntos_presion WHERE latitud IS NOT NULL"), sync_conn
+        puntos_df = await conn.run_sync(lambda c: _run_query(c, 
+            "SELECT id as punto_id, origen, codigo_punto, latitud, longitud FROM puntos_presion WHERE latitud IS NOT NULL"
         ))
         
         # 2. Reclamos Historicos (fugas y operativos)
-        reclamos_df = await conn.run_sync(lambda sync_conn: pd.read_sql(
-            text("SELECT fecha_registro, latitud, longitud, tipo_problema FROM reclamos_historicos WHERE latitud IS NOT NULL"), sync_conn
+        reclamos_df = await conn.run_sync(lambda c: _run_query(c, 
+            "SELECT fecha_registro, latitud, longitud, tipo_problema FROM reclamos_historicos WHERE latitud IS NOT NULL"
         ))
         
         # 3. Registros de Presion (features)
@@ -69,7 +73,7 @@ async def fetch_and_prepare_data():
             CROSS JOIN thresholds t
             GROUP BY d.origin, d.pressure_point, d.year, d.month
         """
-        loggers_df = await conn.run_sync(lambda sync_conn: pd.read_sql(text(presion_query), sync_conn))
+        loggers_df = await conn.run_sync(lambda c: _run_query(c, presion_query))
         
     # Asignar cada reclamo al punto de presion mas cercano usando cKDTree
     if not puntos_df.empty and not reclamos_df.empty:
@@ -282,13 +286,15 @@ def predict_risk(month_data: pd.DataFrame) -> dict:
     if not all(f in month_data.columns for f in features):
         return {"error": "Los datos proporcionados no contienen todas las features requeridas."}
         
-    X = month_data[features].values
+    month_data = month_data.reset_index(drop=True)
+    X = month_data[features].fillna(0).values
+    
     proba = model.predict_proba(X)[:, 1]
     
     results = []
     for i, row in month_data.iterrows():
         results.append({
-            "origen": row.get('origen', 'Desconocido'),
+            "origen": row.get('origin', 'Desconocido'),
             "pressure_point": row.get('pressure_point', 'Desconocido'),
             "risk_probability": round(float(proba[i]), 3),
             "risk_level": "ALTO" if proba[i] > 0.6 else ("MEDIO" if proba[i] > 0.3 else "BAJO")
