@@ -68,9 +68,12 @@ async def process_reclamos_background(content: bytes, filename: str, job_id: str
     print(f"Iniciando procesamiento de reclamos para {filename} (Job: {job_id})...")
     try:
         complaints_columns = ['N° Reclamo', 'Cod Cliente', 'Dirección', 'Fecha Reclamo', 'Tipo Reclamo']
-        
-        # Leer excel
-        df = pd.read_excel(io.BytesIO(content), skiprows=10, usecols=complaints_columns)
+        # Leer excel en un thread separado para no bloquear el servidor
+        loop = asyncio.get_event_loop()
+        df = await loop.run_in_executor(
+            None,
+            lambda c=content, cols=complaints_columns: pd.read_excel(io.BytesIO(c), skiprows=10, usecols=cols)
+        )
         
         # Transformar fechas
         df['Fecha Reclamo'] = pd.to_datetime(df['Fecha Reclamo'], format='%d/%m/%Y', dayfirst=True, errors='coerce')
@@ -96,7 +99,7 @@ async def process_reclamos_background(content: bytes, filename: str, job_id: str
         total_insertados = 0
         
         for _, row in df.iterrows():
-            address = str(row['address'])
+            address = str(row['Dirección'])
             
             # Geocodificar solo si no lo tenemos en caché
             if address not in mapa_coordenadas:
@@ -106,49 +109,55 @@ async def process_reclamos_background(content: bytes, filename: str, job_id: str
             else:
                 lat, lon = mapa_coordenadas[address]
                 
-            num_reclamo = str(row['complaint_number']).strip()
+            num_reclamo = str(row['N° Reclamo']).strip()
             if num_reclamo.endswith('.0'): num_reclamo = num_reclamo[:-2]
-            if len(num_reclamo) != 5 or num_reclamo == '00000':
+            if len(num_reclamo) != 5 or num_reclamo == '00000' or num_reclamo == 'nan':
                 num_reclamo = None
                 
-            cod_cliente = str(row['client_code']).strip()
+            cod_cliente = str(row['Cod Cliente']).strip()
             if cod_cliente.endswith('.0'): cod_cliente = cod_cliente[:-2]
-            if len(cod_cliente) != 7 or cod_cliente == '0000000':
+            if len(cod_cliente) != 7 or cod_cliente == '0000000' or cod_cliente == 'nan':
                 cod_cliente = None
             
-            fecha = row['date_complaint']
+            fecha = row['Fecha Reclamo']
             if pd.isnull(fecha):
                 fecha = datetime.now()
                 
-            reclamo = ReclamoHistorico(
-                codigo_solicitud=num_reclamo,
-                numero_suministro=cod_cliente,
-                direccion=address,
-                fecha_registro=fecha,
-                tipo_problema=str(row['type_complaint']) if pd.notnull(row['type_complaint']) else None,
-                latitud=lat,
-                longitud=lon,
-                estado="HISTORICO"
-            )
-            registros_a_insertar.append(reclamo)
+            reclamo_dict = {
+                "codigo_solicitud": num_reclamo,
+                "numero_suministro": cod_cliente,
+                "direccion": address,
+                "fecha_registro": fecha,
+                "tipo_problema": str(row['Tipo Reclamo']) if pd.notnull(row['Tipo Reclamo']) else None,
+                "latitud": lat,
+                "longitud": lon,
+                "estado": "HISTORICO"
+            }
+            registros_a_insertar.append(reclamo_dict)
             upload_jobs[job_id]["processed"] += 1
             
             # Si llegamos al tamaño del lote, guardamos en la base de datos
             if len(registros_a_insertar) >= batch_size:
                 async with AsyncSessionLocal() as db:
-                    db.add_all(registros_a_insertar)
+                    from sqlalchemy.dialects.postgresql import insert as pg_insert
+                    stmt = pg_insert(ReclamoHistorico).values(registros_a_insertar)
+                    stmt = stmt.on_conflict_do_nothing(constraint="uq_reclamo_historico")
+                    await db.execute(stmt)
                     await db.commit()
-                total_insertados += len(registros_a_insertar)
+                total_insertados += len(registros_a_insertar) # Podría ser menos si hubo duplicados, pero es el total procesado
                 registros_a_insertar = []
                 
         # Insertar los registros restantes que no alcanzaron a formar un lote completo
         if registros_a_insertar:
             async with AsyncSessionLocal() as db:
-                db.add_all(registros_a_insertar)
+                from sqlalchemy.dialects.postgresql import insert as pg_insert
+                stmt = pg_insert(ReclamoHistorico).values(registros_a_insertar)
+                stmt = stmt.on_conflict_do_nothing(constraint="uq_reclamo_historico")
+                await db.execute(stmt)
                 await db.commit()
             total_insertados += len(registros_a_insertar)
             
-        print(f"[{filename}] Se insertaron {total_insertados} reclamos correctamente en lotes.")
+        print(f"[{filename}] Se procesaron {total_insertados} reclamos correctamente en lotes (se omitieron duplicados silenciosamente).")
         upload_jobs[job_id]["status"] = "completed"
             
     except Exception as e:

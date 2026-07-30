@@ -12,11 +12,13 @@ from app.models.registro_presion import RegistroPresion
 async def process_dataloggers(
     files_data: List[dict],
     db: AsyncSession,
-    origen: str
+    origen: str,
+    fecha_esperada: str = None
 ) -> dict:
     """
     Procesa un lote de archivos Excel de dataloggers subidos desde el frontend.
     `files_data` debe ser una lista de dicts: {"filename": str, "content": bytes}
+    `fecha_esperada` es el mes indicado por el usuario (ej. "2024-01") para validar.
     """
     lista_dataframes = []
     
@@ -36,11 +38,12 @@ async def process_dataloggers(
             
             codigo_punto = match.group(1)
             
-            # Leer el excel (saltando la cabecera)
-            df_temp = pd.read_excel(
-                io.BytesIO(content),
-                sheet_name=1,
-                skiprows=6,
+            # Leer el excel (saltando la cabecera) de forma asíncrona para no bloquear el servidor
+            import asyncio
+            loop = asyncio.get_event_loop()
+            df_temp = await loop.run_in_executor(
+                None,
+                lambda c=content: pd.read_excel(io.BytesIO(c), sheet_name=1, skiprows=6)
             )
             
             # Quitar la primera columna (índice interno o irrelevante)
@@ -70,6 +73,25 @@ async def process_dataloggers(
             
             # Limpiar filas nulas en tiempo
             df_temp = df_temp.dropna(subset=['time'])
+            
+            # Validar que la fecha de los datos coincida con la fecha indicada por el supervisor
+            if fecha_esperada and not df_temp.empty:
+                primer_tiempo = df_temp['time'].iloc[0]
+                if isinstance(primer_tiempo, str):
+                    try:
+                        primer_tiempo = datetime.strptime(primer_tiempo, '%Y-%m-%d %H:%M:%S')
+                    except ValueError:
+                        pass # Si el formato es distinto, omitir esta validación estricta para evitar bloqueos
+                
+                if isinstance(primer_tiempo, datetime) or hasattr(primer_tiempo, 'year'):
+                    try:
+                        exp_year, exp_month = map(int, fecha_esperada.split("-"))
+                        if primer_tiempo.year != exp_year or primer_tiempo.month != exp_month:
+                            mes_real = f"{primer_tiempo.year}-{primer_tiempo.month:02d}"
+                            raise ValueError(f"Incongruencia: El archivo {filename} contiene datos de {mes_real}, pero se intentó subir en la carpeta {fecha_esperada}.")
+                    except ValueError as ve:
+                        if "Incongruencia:" in str(ve):
+                            raise ve
             
             lista_dataframes.append(df_temp)
             

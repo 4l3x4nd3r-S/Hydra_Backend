@@ -85,8 +85,8 @@ async def upload_dataloggers(
                 "content_type": file.content_type
             })
             
-        # 2. Llamar al procesador PRIMERO (Si hay duplicados, lanzará error y se detiene aquí)
-        resultado = await process_dataloggers(files_data, db, origen)
+        # 2. Llamar al procesador PRIMERO (Si hay duplicados o fechas inválidas, lanzará error y se detiene aquí)
+        resultado = await process_dataloggers(files_data, db, origen, fecha)
         
         # 3. Solo si la base de datos aceptó los datos, guardamos los Excels en Storage
         for file_data in files_data:
@@ -136,9 +136,14 @@ async def upload_reclamos(
         from app.models.reclamo_historico import ReclamoHistorico
         
         try:
-            # Leer solo las primeras filas para ser súper rápidos
+            # Leer solo las primeras filas para ser súper rápidos, pero en un thread separado para no bloquear el Event Loop
             complaints_columns = ['N° Reclamo', 'Cod Cliente']
-            df_check = pd.read_excel(io.BytesIO(file_bytes), skiprows=10, usecols=complaints_columns, nrows=5)
+            import asyncio
+            loop = asyncio.get_event_loop()
+            df_check = await loop.run_in_executor(
+                None,
+                lambda c=file_bytes, cols=complaints_columns: pd.read_excel(io.BytesIO(c), skiprows=10, usecols=cols, nrows=5)
+            )
             
             if not df_check.empty:
                 primer_reclamo = str(df_check.iloc[0]['N° Reclamo']).strip()
