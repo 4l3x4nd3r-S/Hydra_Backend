@@ -66,6 +66,37 @@ async def get_metricas_punto(
     )
 
 
+@router.get("/cobertura/arbol", summary="Obtener árbol de cobertura de dataloggers")
+async def get_cobertura_dataloggers(
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Devuelve la cobertura real de datos de presión en la BD.
+    Formato: { "Puerto Maldonado": { "2024-01": ["P-01", "P-02"...], ... }, "El Triunfo": {...} }
+    Ideal para construir un árbol de archivos en el frontend y evitar subir duplicados.
+    """
+    query = text("""
+        SELECT 
+            pp.origen,
+            TO_CHAR(rp.fecha_hora, 'YYYY-MM') AS mes,
+            ARRAY_AGG(DISTINCT pp.codigo_punto) AS puntos
+        FROM registros_presion rp
+        JOIN puntos_presion pp ON rp.punto_presion_id = pp.id
+        GROUP BY pp.origen, TO_CHAR(rp.fecha_hora, 'YYYY-MM')
+    """)
+    rows = await db.execute(query)
+    
+    resultado = {}
+    for r in rows:
+        origen = r[0] or "Desconocido"
+        mes = r[1]
+        puntos = sorted(r[2]) if r[2] else []
+        
+        if origen not in resultado:
+            resultado[origen] = {}
+        resultado[origen][mes] = puntos
+        
+    return resultado
 
 @router.get("", response_model=list[PuntoPresionResponse], summary="Listar puntos de presión")
 async def list_puntos(
