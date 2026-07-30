@@ -120,7 +120,8 @@ async def get_reclamos_upload_status(job_id: str):
 @router.post("/reclamos", summary="Subir y procesar archivo de Reclamos")
 async def upload_reclamos(
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db)
 ):
     if not file:
         raise HTTPException(status_code=400, detail="No file provided")
@@ -128,6 +129,36 @@ async def upload_reclamos(
     try:
         file_bytes = await file.read()
         
+        # Validación sincrónica rápida para evitar subir duplicados al Storage
+        import pandas as pd
+        import io
+        from sqlalchemy import select
+        from app.models.reclamo_historico import ReclamoHistorico
+        
+        try:
+            # Leer solo las primeras filas para ser súper rápidos
+            complaints_columns = ['N° Reclamo', 'Cod Cliente']
+            df_check = pd.read_excel(io.BytesIO(file_bytes), skiprows=10, usecols=complaints_columns, nrows=5)
+            
+            if not df_check.empty:
+                primer_reclamo = str(df_check.iloc[0]['N° Reclamo']).strip()
+                if primer_reclamo.endswith('.0'): primer_reclamo = primer_reclamo[:-2]
+                
+                if primer_reclamo and primer_reclamo != 'nan' and primer_reclamo != '00000':
+                    # Buscar en la BD si ese N° Reclamo ya existe
+                    result = await db.execute(
+                        select(ReclamoHistorico).where(ReclamoHistorico.codigo_solicitud == primer_reclamo)
+                    )
+                    if result.scalars().first():
+                        # Si ya existe, abortamos TODO inmediatamente antes de guardar en Storage
+                        return JSONResponse(status_code=400, content={
+                            "detail": "Este archivo de reclamos ya fue subido anteriormente (se detectaron reclamos duplicados)."
+                        })
+        except Exception as e:
+            # Si el Excel tiene un formato inválido, fallará aquí, pero lo dejamos pasar 
+            # para que el processor en background lo reporte correctamente.
+            pass
+            
         # Subir a Storage
         backup_url = None
         if supabase:

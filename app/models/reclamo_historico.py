@@ -5,6 +5,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
 )
 
 from app.core.database import Base
@@ -22,3 +23,7 @@ class ReclamoHistorico(Base):
     latitud = Column(Float, nullable=True)
     longitud = Column(Float, nullable=True)
     estado = Column(String(50), nullable=True, default="HISTORICO")
+
+    __table_args__ = (
+        UniqueConstraint("codigo_solicitud", "numero_suministro", "fecha_registro", name="uq_reclamo_historico"),
+    )
