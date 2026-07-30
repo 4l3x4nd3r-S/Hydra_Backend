@@ -84,28 +84,18 @@ async def fetch_and_prepare_data():
         reclamos_df['year'] = pd.to_datetime(reclamos_df['fecha_registro']).dt.year
         reclamos_df['month'] = pd.to_datetime(reclamos_df['fecha_registro']).dt.month
         
-        # Filtros de tipos de problemas (como en m_1_prepare_data)
-        FUGA_TYPES = [
-            'B10. FUGA DE AGUA EN CAJA MEDIDOR',
-            'B5. FUGAS EN RED MATRIZ',
-            'B1. FUGAS EN CONEXION DOMICILIARIA',
-        ]
-
-        ADMIN_TYPES = [
-            'TRABAJOS COLATERAS',
-            'REPOSICIÓN DE TUBERIA DE CONCRETO A PVC - DESAGÜE',
-            'B9. LIMPIEZA LLAVE DE TOMA',
-            'B12. BUZON SIN TAPA',
-            'B13. CALIDAD DE AGUA',
-            'B14. INSTALACION DE MEDIDOR',
-            'REUBICACIÓN DE CONEXION',
-            'REPOSICIÓN DE MEDIDOR POR HURTO',
-            'REPOSICIÓN DE CAJA DE MEDIDOR'
-        ]
-        
+        # Filtros de tipos de problemas dinámicos
         reclamos_df['tipo_problema'] = reclamos_df['tipo_problema'].fillna('').str.upper()
-        reclamos_df['is_fuga'] = reclamos_df['tipo_problema'].isin(FUGA_TYPES)
-        reclamos_df['is_operational'] = ~reclamos_df['tipo_problema'].isin(ADMIN_TYPES)
+        
+        # Consideramos evento crítico (fuga/problema de red) a cualquier OP-X, o los B históricos de fuga, o si dice FUGA
+        cond_op = reclamos_df['tipo_problema'].str.contains(r'^OP', regex=True)
+        cond_b = reclamos_df['tipo_problema'].str.contains(r'^(B10|B5|B1)\b', regex=True)
+        cond_fuga = reclamos_df['tipo_problema'].str.contains('FUGA', regex=False)
+        
+        reclamos_df['is_fuga'] = cond_op | cond_b | cond_fuga
+        
+        # El resto lo consideramos trabajos operativos/administrativos menores
+        reclamos_df['is_operational'] = ~reclamos_df['is_fuga']
         
         reclamos_fuga = reclamos_df[reclamos_df['is_fuga']]
         reclamos_op = reclamos_df[reclamos_df['is_operational']]
