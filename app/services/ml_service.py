@@ -231,10 +231,10 @@ async def train_model():
     if metrics_history:
         df_metrics = pd.DataFrame(metrics_history)
         final_metrics = {
-            "precision": round(df_metrics['precision'].mean(), 3),
-            "recall": round(df_metrics['recall'].mean(), 3),
-            "f1": round(df_metrics['f1'].mean(), 3),
-            "auc": round(df_metrics['auc'].mean(), 3)
+            "precision": float(round(df_metrics['precision'].mean(), 3)),
+            "recall": float(round(df_metrics['recall'].mean(), 3)),
+            "f1": float(round(df_metrics['f1'].mean(), 3)),
+            "auc": float(round(df_metrics['auc'].mean(), 3))
         }
     
     # 2. Entrenar modelo final para produccion con TODOS los datos
