@@ -76,33 +76,34 @@ async def upload_dataloggers(
     urls_guardadas = []
     
     try:
+        # 1. Leer archivos a memoria
         for file in files:
             file_bytes = await file.read()
+            files_data.append({
+                "filename": file.filename,
+                "content": file_bytes,
+                "content_type": file.content_type
+            })
             
-            # Guardar en Storage (backup original) con estructura de carpetas
-            # Reemplazamos espacios por guiones bajos para las carpetas
+        # 2. Llamar al procesador PRIMERO (Si hay duplicados, lanzará error y se detiene aquí)
+        resultado = await process_dataloggers(files_data, db, origen)
+        
+        # 3. Solo si la base de datos aceptó los datos, guardamos los Excels en Storage
+        for file_data in files_data:
             origen_limpio = origen.replace(' ', '_')
-            unique_name = f"{uuid.uuid4()}_{file.filename}"
+            unique_name = f"{uuid.uuid4()}_{file_data['filename']}"
             ruta_completa_storage = f"dataloggers/{origen_limpio}/{fecha}/{unique_name}"
             
             if supabase:
                 supabase.storage.from_(DATA_BUCKET).upload(
-                    file=file_bytes,
+                    file=file_data["content"],
                     path=ruta_completa_storage,
-                    file_options={"content-type": file.content_type}
+                    file_options={"content-type": file_data["content_type"]}
                 )
                 url = supabase.storage.from_(DATA_BUCKET).get_public_url(ruta_completa_storage)
                 urls_guardadas.append(url)
-            
-            files_data.append({
-                "filename": file.filename,
-                "content": file_bytes
-            })
-            
-        # Llamar al procesador
-        resultado = await process_dataloggers(files_data, db, origen)
+                
         resultado["backup_urls"] = urls_guardadas
-        
         return JSONResponse(status_code=200, content=resultado)
         
     except ValueError as ve:
