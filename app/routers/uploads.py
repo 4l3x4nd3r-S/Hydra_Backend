@@ -154,8 +154,21 @@ async def upload_reclamos(
                 primer_reclamo = str(df_check.iloc[0]['N° Reclamo']).strip()
                 if primer_reclamo.endswith('.0'): primer_reclamo = primer_reclamo[:-2]
                 
-                if primer_reclamo and primer_reclamo != 'nan' and primer_reclamo != '00000':
-                    # Buscar en la BD si ese N° Reclamo ya existe
+                if primer_reclamo == '00000' or primer_reclamo.lower() == 'nan' or primer_reclamo == '' or primer_reclamo == 'None':
+                    primer_reclamo = None
+                else:
+                    primer_reclamo = primer_reclamo.zfill(5)
+                
+                primer_suministro = str(df_check.iloc[0]['Cod Cliente']).strip()
+                if primer_suministro.endswith('.0'): primer_suministro = primer_suministro[:-2]
+                
+                if primer_suministro == '0000000' or primer_suministro.lower() == 'nan' or primer_suministro == '' or primer_suministro == 'None':
+                    primer_suministro = None
+                else:
+                    primer_suministro = primer_suministro.zfill(7)
+                
+                # Buscar si ya existe este reclamo en la BD
+                if primer_reclamo:
                     result = await db.execute(
                         select(ReclamoHistorico).where(ReclamoHistorico.codigo_solicitud == primer_reclamo)
                     )

@@ -111,12 +111,20 @@ async def process_reclamos_background(content: bytes, filename: str, job_id: str
                 
             num_reclamo = str(row['N° Reclamo']).strip()
             if num_reclamo.endswith('.0'): num_reclamo = num_reclamo[:-2]
-            if len(num_reclamo) != 5 or num_reclamo == '00000' or num_reclamo == 'nan':
+            if num_reclamo == '00000' or num_reclamo.lower() == 'nan' or num_reclamo == '':
+                num_reclamo = None
+            elif num_reclamo != 'None':
+                num_reclamo = num_reclamo.zfill(5)
+            else:
                 num_reclamo = None
                 
             cod_cliente = str(row['Cod Cliente']).strip()
             if cod_cliente.endswith('.0'): cod_cliente = cod_cliente[:-2]
-            if len(cod_cliente) != 7 or cod_cliente == '0000000' or cod_cliente == 'nan':
+            if cod_cliente == '0000000' or cod_cliente.lower() == 'nan' or cod_cliente == '':
+                cod_cliente = None
+            elif cod_cliente != 'None':
+                cod_cliente = cod_cliente.zfill(7)
+            else:
                 cod_cliente = None
             
             fecha = row['Fecha Reclamo']
