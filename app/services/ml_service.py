@@ -35,7 +35,7 @@ async def fetch_and_prepare_data():
         presion_query = """
             WITH diffs AS (
                 SELECT 
-                    pp.origen,
+                    pp.origen as origin,
                     pp.codigo_punto as pressure_point,
                     EXTRACT(YEAR FROM rp.fecha_hora) as year,
                     EXTRACT(MONTH FROM rp.fecha_hora) as month,
@@ -50,7 +50,7 @@ async def fetch_and_prepare_data():
                 FROM diffs
             )
             SELECT 
-                d.origen,
+                d.origin,
                 d.pressure_point,
                 CAST(d.year AS INTEGER) as year,
                 CAST(d.month AS INTEGER) as month,
@@ -67,7 +67,7 @@ async def fetch_and_prepare_data():
                 CAST(SUM(CASE WHEN d.pressure_diff < t.drop_threshold THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) as sudden_drop_rate
             FROM diffs d
             CROSS JOIN thresholds t
-            GROUP BY d.origen, d.pressure_point, d.year, d.month
+            GROUP BY d.origin, d.pressure_point, d.year, d.month
         """
         loggers_df = await conn.run_sync(lambda sync_conn: pd.read_sql(text(presion_query), sync_conn))
         
