@@ -275,7 +275,7 @@ def predict_risk(month_data: pd.DataFrame) -> dict:
     
     proba = model.predict_proba(X)[:, 1]
     
-    # Lógica de umbrales fijos sobre el risk_score absoluto, descartando percentiles
+    # Lógica de umbrales fijos sobre el risk_score absoluto (Sin Percentiles)
     results = []
     for i, row in month_data.iterrows():
         prob = float(proba[i])
