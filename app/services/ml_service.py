@@ -3,9 +3,7 @@ import pickle
 import pandas as pd
 import numpy as np
 from datetime import datetime
-from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score
 from sqlalchemy import text
@@ -238,12 +236,8 @@ async def train_model():
     )
     rf.fit(X, y)
     
-    scaler = StandardScaler()
-    scaler.fit(X)
-    
     artifacts = {
         'model': rf,
-        'scaler': scaler,
         'features': FEATURES,
         'trained_at': datetime.now().isoformat(),
         'n_samples': len(data),
@@ -281,20 +275,15 @@ def predict_risk(month_data: pd.DataFrame) -> dict:
     
     proba = model.predict_proba(X)[:, 1]
     
-    # Calcular percentiles dinámicos para ranking de prioridad
-    # Top 15% más riesgoso = ALTO, siguiente 25% = MEDIO
-    p_alto = np.percentile(proba, 85) if len(proba) > 0 else 0.6
-    p_medio = np.percentile(proba, 60) if len(proba) > 0 else 0.3
-    
+    # Lógica de umbrales fijos sobre el risk_score absoluto, descartando percentiles
     results = []
     for i, row in month_data.iterrows():
         prob = float(proba[i])
         
-        # Asignar nivel basado en prioridad relativa
-        # (siempre y cuando haya algo de riesgo > 1% para evitar falsas alarmas absolutas si todo está perfecto)
-        if prob >= p_alto and prob > 0.01:
+        # Asignar nivel basado en el risk_score
+        if prob >= 0.60:
             risk = "ALTO"
-        elif prob >= p_medio and prob > 0.01:
+        elif prob >= 0.40:
             risk = "MEDIO"
         else:
             risk = "BAJO"
