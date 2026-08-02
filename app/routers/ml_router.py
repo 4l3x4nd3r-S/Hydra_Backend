@@ -8,20 +8,20 @@ from app.models.usuario import Usuario
 
 router = APIRouter(prefix="/ml", tags=["Machine Learning"])
 
-@router.post("/train")
-async def trigger_training(
-    background_tasks: BackgroundTasks,
-    current_user: Usuario = Depends(get_current_user)
-) -> Dict[str, Any]:
-    """
-    Desencadena el entrenamiento del modelo de predicción de fugas.
-    Esto se ejecuta de forma síncrona/asíncrona. Si el panel es grande, debería 
-    ejecutarse en background, pero por simplicidad retornamos el estado directo aquí.
-    """
-    # En producción real con mucha data, usar background_tasks.add_task(train_model)
-    # y retornar "Entrenamiento iniciado".
-    result = await train_model()
-    return result
+# @router.post("/train")
+# async def trigger_training(
+#     background_tasks: BackgroundTasks,
+#     current_user: Usuario = Depends(get_current_user)
+# ) -> Dict[str, Any]:
+#     """
+#     Desencadena el entrenamiento del modelo de predicción de fugas.
+#     Esto se ejecuta de forma síncrona/asíncrona. Si el panel es grande, debería 
+#     ejecutarse en background, pero por simplicidad retornamos el estado directo aquí.
+#     """
+#     # En producción real con mucha data, usar background_tasks.add_task(train_model)
+#     # y retornar "Entrenamiento iniciado".
+#     # result = await train_model()
+#     # return result
 
 @router.get("/predict")
 async def get_predictions(
