@@ -123,7 +123,9 @@ async def fetch_and_prepare_data():
     for col in ['n_fuga', 'n_operativos']:
         if col in panel.columns:
             panel.loc[within_range, col] = panel.loc[within_range, col].fillna(0)
-            
+
+    panel.dropna(subset=['n_fuga', 'n_operativos'], inplace=True)
+                
     panel = panel.sort_values(['origin', 'pressure_point', 'year', 'month']).reset_index(drop=True)
     
     # Feature Engineering (Exactamente como m_2)
