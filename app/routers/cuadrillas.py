@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
@@ -193,7 +193,7 @@ async def _validar_personal_mantenimiento(db: AsyncSession, ids: set[int]) -> No
     if len(usuarios) != len(ids):
         raise HTTPException(status_code=400, detail="Uno o más integrantes no existen.")
     if any(
-        usuario.rol not in [RolUsuario.GASFITERO, RolUsuario.CHOFER]
+        usuario.rol != RolUsuario.GASFITERO
         or usuario.area != AreaUsuario.MANTENIMIENTO
         or not usuario.activo
         for usuario in usuarios
@@ -235,8 +235,8 @@ async def actualizar_cuadrilla(
             
             if m["rol"] in (RolEnCuadrilla.GASFITERO_PRINCIPAL, RolEnCuadrilla.GASFITERO_APOYO) and usr.rol != RolUsuario.GASFITERO:
                 raise HTTPException(status_code=400, detail=f"El usuario {usr.nombre} no es Gasfitero.")
-            if m["rol"] == RolEnCuadrilla.CHOFER_CAMIONETA and usr.rol != RolUsuario.CHOFER:
-                raise HTTPException(status_code=400, detail=f"El usuario {usr.nombre} no es Chofer.")
+            if m["rol"] == RolEnCuadrilla.CHOFER_CAMIONETA and usr.rol != RolUsuario.GASFITERO:
+                raise HTTPException(status_code=400, detail=f"El usuario {usr.nombre} no es Gasfitero.")
         
         await db.execute(delete(CuadrillaPersonal).where(CuadrillaPersonal.cuadrilla_id == cuadrilla.id))
         
