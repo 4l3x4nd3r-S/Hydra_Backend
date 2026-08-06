@@ -5,6 +5,24 @@ from fastapi.responses import JSONResponse
 
 logger = logging.getLogger("hydra.core.errors")
 
+async def integrity_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    request_id = getattr(request.state, "request_id", None)
+    logger.warning(
+        "http.409 path=%s detail=%r request_id=%s",
+        request.url.path,
+        str(exc),
+        request_id,
+    )
+    return JSONResponse(
+        status_code=409,
+        content={
+            "detail": "Operación rechazada por conflicto de datos o referencia a un registro que ya no existe.",
+            "code": "DATA_INTEGRITY_ERROR",
+            "request_id": request_id,
+        },
+    )
+
+
 
 async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse:
     request_id = getattr(request.state, "request_id", None)

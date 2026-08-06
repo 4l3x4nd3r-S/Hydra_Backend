@@ -5,7 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.logging_config import setup_logging
-from app.core.exception_handlers import value_error_handler, unhandled_exception_handler
+from sqlalchemy.exc import IntegrityError
+from app.core.exception_handlers import value_error_handler, unhandled_exception_handler, integrity_error_handler
 from app.routers import auth, usuarios, sectores, puntos_presion, registros_presion, reclamos, cuadrillas, elementos_red, ordenes_servicio, supervisor, uploads, catalogos, ml_router
 
 setup_logging()
@@ -34,6 +35,7 @@ async def request_id_middleware(request: Request, call_next):
 
 
 app.add_exception_handler(ValueError, value_error_handler)
+app.add_exception_handler(IntegrityError, integrity_error_handler)
 app.add_exception_handler(Exception, unhandled_exception_handler)
 
 app.include_router(auth.router, prefix="/api/v1")

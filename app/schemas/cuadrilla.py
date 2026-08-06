@@ -32,6 +32,7 @@ class CrearCuadrillaRequest(BaseModel):
 
 class ActualizarCuadrillaRequest(BaseModel):
     especialidad: Optional[str] = None
+    miembros: Optional[List[dict]] = None
 
 
 class CuadrillaResponse(BaseModel):
