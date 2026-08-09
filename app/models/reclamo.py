@@ -24,7 +24,7 @@ class Reclamo(Base):
         ),
         CheckConstraint(
             "numero_suministro IS NULL OR "
-            "(numero_suministro ~ '^[0-9]{7}$' AND numero_suministro <> '0000000')",
+            "(numero_suministro ~ '^[0-9]{6,7}$' AND numero_suministro NOT IN ('0000000', '000000'))",
             name="ck_reclamos_numero_suministro_7_digitos",
         ),
         CheckConstraint(

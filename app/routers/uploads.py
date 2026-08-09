@@ -1,6 +1,6 @@
 import os
 import uuid
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,24 +26,27 @@ supabase: Client | None = None
 if supabase_url and supabase_key:
     supabase = create_client(supabase_url, supabase_key)
 
-def upload_to_supabase(file_bytes: bytes, filename: str, content_type: str, bucket: str) -> str:
+def upload_to_supabase(file_bytes: bytes, filename: str, content_type: str, bucket: str, path_prefix: str = "") -> str:
     """Helper para subir archivo a Supabase Storage y retornar su URL pública."""
     if not supabase:
         raise HTTPException(status_code=500, detail="Supabase no está configurado")
         
     file_ext = os.path.splitext(filename)[1] if filename else ""
     unique_filename = f"{uuid.uuid4()}{file_ext}"
+    full_path = f"{path_prefix}/{unique_filename}" if path_prefix else unique_filename
     
     supabase.storage.from_(bucket).upload(
         file=file_bytes,
-        path=unique_filename,
+        path=full_path,
         file_options={"content-type": content_type or "application/octet-stream"}
     )
-    return supabase.storage.from_(bucket).get_public_url(unique_filename)
+    return supabase.storage.from_(bucket).get_public_url(full_path)
 
 
 @router.post("/evidencias", summary="Subir imagen de evidencia (Órdenes de Servicio)")
 async def upload_evidencia(
+    os_id: Optional[str] = Form(None),
+    categoria: Optional[str] = Form(None),
     file: UploadFile = File(...),
     current_user: Usuario = Depends(get_current_user)
 ):
@@ -58,10 +61,21 @@ async def upload_evidencia(
     # Validar que sea una imagen (opcional pero recomendado)
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="El archivo debe ser una imagen")
+        
+    if categoria and categoria not in ["problemas", "soluciones", "firma"]:
+        raise HTTPException(status_code=400, detail="Categoría inválida. Debe ser 'problemas', 'soluciones' o 'firma'")
     
     try:
         file_bytes = await file.read()
-        public_url = upload_to_supabase(file_bytes, file.filename, file.content_type, DEFAULT_BUCKET)
+        path_prefix = ""
+        if os_id and categoria:
+            path_prefix = f"{os_id}/{categoria}"
+        elif os_id:
+            path_prefix = os_id
+        elif categoria:
+            path_prefix = categoria
+            
+        public_url = upload_to_supabase(file_bytes, file.filename, file.content_type, DEFAULT_BUCKET, path_prefix=path_prefix)
         return JSONResponse(status_code=200, content={"url": public_url})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

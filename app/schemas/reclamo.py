@@ -20,8 +20,8 @@ class _ValidacionesReclamo:
     @field_validator("numero_suministro", check_fields=False)
     @classmethod
     def _suministro_no_solo_ceros(cls, valor: Optional[str]) -> Optional[str]:
-        if valor == "0000000":
-            raise ValueError("El número de suministro no puede ser 0000000")
+        if valor == "0000000" or valor == "000000":
+            raise ValueError("El número de suministro no puede ser todo ceros")
         return valor
 class CrearReclamoRequest(_ValidacionesReclamo, BaseModel):
     formato: str = Field(min_length=1, max_length=120)
@@ -33,8 +33,8 @@ class CrearReclamoRequest(_ValidacionesReclamo, BaseModel):
     nombre_solicitante: str = Field(min_length=1, max_length=100)
     direccion: str = Field(min_length=1, max_length=255)
     telefono: str = Field(pattern=r"^9[0-9]{8}$")
-    email: str = Field(pattern=r"^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$")
-    numero_suministro: str = Field(pattern=r"^\d{7}$")
+    email: Optional[str] = Field(default=None, pattern=r"^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$")
+    numero_suministro: str = Field(pattern=r"^\d{6,7}$")
     fecha_registro: Optional[datetime] = None
 class ActualizarReclamoRequest(_ValidacionesReclamo, BaseModel):
     formato: Optional[str] = Field(default=None, max_length=120)
@@ -49,7 +49,7 @@ class ActualizarReclamoRequest(_ValidacionesReclamo, BaseModel):
     email: Optional[str] = Field(
         default=None, pattern=r"^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$"
     )
-    numero_suministro: Optional[str] = Field(default=None, pattern=r"^\d{7}$")
+    numero_suministro: Optional[str] = Field(default=None, pattern=r"^\d{6,7}$")
 class ReclamoResponse(BaseModel):
     id: int
     usuario_id: Optional[int] = None
