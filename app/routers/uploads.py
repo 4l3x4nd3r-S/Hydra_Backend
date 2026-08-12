@@ -173,14 +173,15 @@ async def upload_reclamos(
                 lambda c=file_bytes: pd.read_excel(io.BytesIO(c), skiprows=10, nrows=5)
             )
             
-            # Mapeo dinámico de columnas
             col_map = {}
             for col in df_check.columns:
                 col_upper = str(col).upper()
                 if 'RECLAMO' in col_upper and ('N°' in col_upper or 'N' in col_upper) and 'TIPO' not in col_upper: 
-                    col_map[col] = 'N° Reclamo'
+                    if 'N° Reclamo' not in col_map.values():
+                        col_map[col] = 'N° Reclamo'
                 elif 'CLIENTE' in col_upper: 
-                    col_map[col] = 'Cod Cliente'
+                    if 'Cod Cliente' not in col_map.values():
+                        col_map[col] = 'Cod Cliente'
             df_check = df_check.rename(columns=col_map)
             
             if not df_check.empty and 'N° Reclamo' in df_check.columns and 'Cod Cliente' in df_check.columns:

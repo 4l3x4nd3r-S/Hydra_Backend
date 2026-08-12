@@ -79,15 +79,20 @@ async def process_reclamos_background(content: bytes, filename: str, job_id: str
         for col in df.columns:
             col_upper = str(col).upper()
             if 'RECLAMO' in col_upper and ('N°' in col_upper or 'N' in col_upper) and 'TIPO' not in col_upper: 
-                col_map[col] = 'N° Reclamo'
+                if 'N° Reclamo' not in col_map.values():
+                    col_map[col] = 'N° Reclamo'
             elif 'CLIENTE' in col_upper: 
-                col_map[col] = 'Cod Cliente'
+                if 'Cod Cliente' not in col_map.values():
+                    col_map[col] = 'Cod Cliente'
             elif 'DIRECCI' in col_upper or 'DESCRIPCION' in col_upper: 
-                col_map[col] = 'Dirección'
+                if 'Dirección' not in col_map.values():
+                    col_map[col] = 'Dirección'
             elif 'FECHA' in col_upper and 'RECLAMO' in col_upper: 
-                col_map[col] = 'Fecha Reclamo'
+                if 'Fecha Reclamo' not in col_map.values():
+                    col_map[col] = 'Fecha Reclamo'
             elif 'TIPO' in col_upper and 'RECLAMO' in col_upper: 
-                col_map[col] = 'Tipo Reclamo'
+                if 'Tipo Reclamo' not in col_map.values():
+                    col_map[col] = 'Tipo Reclamo'
                 
         df = df.rename(columns=col_map)
         
