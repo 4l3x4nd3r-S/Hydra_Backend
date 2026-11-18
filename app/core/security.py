@@ -42,7 +42,7 @@ async def get_current_user(
     db: AsyncSession = Depends(get_db),
 ):
     token = credentials.credentials
-    from app.models.usuario import Usuario
+    from app.models.usuario import EstadoPersonal, Usuario
 
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -61,6 +61,10 @@ async def get_current_user(
 
     result = await db.execute(select(Usuario).where(Usuario.id == int(user_id)))
     user = result.scalars().first()
-    if user is None:
+    if (
+        user is None
+        or not user.activo
+        or user.estado != EstadoPersonal.ACTIVO
+    ):
         raise credentials_exception
     return user

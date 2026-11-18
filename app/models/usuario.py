@@ -5,13 +5,14 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     Column,
+    Date,
     DateTime,
     Enum,
     Integer,
     String,
     func,
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, validates
 
 from app.core.database import Base
 
@@ -30,6 +31,12 @@ class CargoUsuario(str, enum.Enum):
 
 class AreaUsuario(str, enum.Enum):
     MANTENIMIENTO = "MANTENIMIENTO"
+
+
+class EstadoPersonal(str, enum.Enum):
+    ACTIVO = "ACTIVO"
+    AUSENTE = "AUSENTE"
+    RETIRADO = "RETIRADO"
 
 
 class Usuario(Base):
@@ -55,7 +62,31 @@ class Usuario(Base):
     cargo = Column(Enum(CargoUsuario, name="cargo_usuario"), nullable=True)
     area = Column(Enum(AreaUsuario, name="area_usuario"), nullable=True)
     activo = Column(Boolean, default=True)
+    estado = Column(
+        Enum(EstadoPersonal, name="estado_personal"),
+        nullable=False,
+        default=EstadoPersonal.ACTIVO,
+        server_default=EstadoPersonal.ACTIVO.value,
+    )
+    motivo_ausencia = Column(String(200), nullable=True)
+    fecha_retorno = Column(Date, nullable=True)
     created_at = Column(DateTime, default=func.now())
+
+    @validates("estado")
+    def _sincronizar_activo(self, key, value):
+        """Mantiene ``activo`` sincronizado con ``estado``.
+
+        ``activo`` se conserva porque las consultas existentes (login, refresh,
+        supervisor y app móvil) ya lo usan. Un ausente o retirado queda fuera de
+        todas ellas sin necesidad de reescribirlas.
+        """
+        estado = (
+            value
+            if isinstance(value, EstadoPersonal)
+            else EstadoPersonal(value)
+        )
+        self.activo = estado == EstadoPersonal.ACTIVO
+        return estado
 
     cuadrillas = relationship("CuadrillaPersonal", back_populates="usuario")
     reclamos = relationship("Reclamo", back_populates="usuario")

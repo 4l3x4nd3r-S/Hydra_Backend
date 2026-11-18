@@ -11,7 +11,7 @@ from app.core.security import (
     create_refresh_token,
     get_current_user,
 )
-from app.models.usuario import Usuario
+from app.models.usuario import EstadoPersonal, Usuario
 from app.schemas.auth import (
     LoginRequest,
     LoginResponse,
@@ -33,12 +33,28 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
 
     if (
         not user
-        or not user.activo
         or not verify_password(payload.password, user.password_hash)
     ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Código de empleado o contraseña incorrectos.",
+        )
+
+    # La contraseña es correcta: ahora sí podemos explicar por qué no entra.
+    if user.estado != EstadoPersonal.ACTIVO:
+        if user.estado == EstadoPersonal.AUSENTE:
+            if user.fecha_retorno:
+                detalle = (
+                    "Tu cuenta está en ausencia hasta el "
+                    f"{user.fecha_retorno.strftime('%d/%m')}."
+                )
+            else:
+                detalle = "Tu cuenta está en ausencia."
+        else:
+            detalle = "Tu cuenta fue dada de baja."
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=detalle,
         )
 
     token_data = {"sub": str(user.id)}
@@ -77,7 +93,11 @@ async def refresh_session(
 
     result = await db.execute(select(Usuario).where(Usuario.id == user_id))
     user = result.scalars().first()
-    if not user or not user.activo:
+    if (
+        not user
+        or not user.activo
+        or user.estado != EstadoPersonal.ACTIVO
+    ):
         raise credentials_exception
 
     token_data = {"sub": str(user.id)}

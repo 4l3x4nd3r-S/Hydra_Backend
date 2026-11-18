@@ -131,6 +131,46 @@ Documentación interactiva en `http://localhost:8000/docs`
 
 ---
 
+## Estados del Personal
+
+El personal ya no se crea y borra en cada rotación: la cuenta permanece y
+cambia de estado.
+
+| Estado | Inicia sesión | Asignable a cuadrillas | Visible en Personal |
+|---|---|---|---|
+| `ACTIVO` | Sí | Sí | Sí |
+| `AUSENTE` (viaje, vacaciones, rotación) | No | No | Sí, con motivo y fecha de regreso |
+| `RETIRADO` (ya no trabaja) | No | No | Sí, en la pestaña Retirados |
+
+> `activo` se conserva por compatibilidad y se mantiene sincronizado:
+> `activo = (estado == ACTIVO)`.
+
+### Cambiar el estado
+
+```http
+PATCH /api/v1/usuarios/{id}
+{ "estado": "AUSENTE", "motivo_ausencia": "Vacaciones", "fecha_retorno": "2026-12-01" }
+{ "estado": "ACTIVO" }
+{ "estado": "RETIRADO" }
+```
+
+Reglas:
+
+- Pasar a `AUSENTE` o `RETIRADO` con la persona en una cuadrilla activa
+  devuelve **409** (`Primero retíralo de la cuadrilla ...`).
+- Pasar a `ACTIVO` limpia `motivo_ausencia` y `fecha_retorno`.
+- Una `fecha_retorno` anterior a hoy devuelve **422**.
+- Un supervisor no puede cambiar su propio estado.
+- Login con contraseña correcta pero estado no `ACTIVO` devuelve **403**
+  con un mensaje claro; con contraseña incorrecta se mantiene el 401 genérico.
+- Los tokens vigentes de una persona que pasa a `AUSENTE`/`RETIRADO` dejan de
+  funcionar de inmediato.
+
+El cargo de chofer ya no se usa: `POST`/`PATCH /usuarios` rechazan
+`CHOFER`/`CHOFER_CAMIONETA` con **422**.
+
+---
+
 ## Despliegue en Railway
 
 1. Conectar el repositorio de GitHub a Railway

@@ -48,7 +48,7 @@ async def test_finalizar_os_precarga_cuadrilla_y_construye_snapshot(
             """
             INSERT INTO cuadrillas_personal (
                 cuadrilla_id, usuario_id, rol_en_cuadrilla
-            ) VALUES (901, 902, 'LIDER')
+            ) VALUES (901, 902, 'GASFITERO_PRINCIPAL')
             """
         )
     )
