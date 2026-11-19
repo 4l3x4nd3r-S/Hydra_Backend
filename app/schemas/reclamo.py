@@ -23,13 +23,21 @@ class _ValidacionesReclamo:
         if valor == "0000000" or valor == "000000":
             raise ValueError("El número de suministro no puede ser todo ceros")
         return valor
+    @field_validator("descripcion", mode="before", check_fields=False)
+    @classmethod
+    def _descripcion_vacia_a_nulo(cls, valor: Optional[str]) -> Optional[str]:
+        # La mayoría de reclamos no traen descripción: "" o solo espacios se guardan como NULL.
+        if isinstance(valor, str):
+            valor = valor.strip()
+            return valor or None
+        return valor
 class CrearReclamoRequest(_ValidacionesReclamo, BaseModel):
     formato: str = Field(min_length=1, max_length=120)
     codigo_solicitud: str = Field(pattern=r"^\d{5}$")
     canal_entrada: str = Field(min_length=1, max_length=120)
     tipo_problema: str = Field(min_length=1, max_length=120)
     estado: Optional[str] = Field(default=None, max_length=50)
-    descripcion: str = Field(min_length=1, max_length=500)
+    descripcion: Optional[str] = Field(default=None, max_length=500)
     nombre_solicitante: str = Field(min_length=1, max_length=100)
     direccion: str = Field(min_length=1, max_length=255)
     telefono: str = Field(pattern=r"^9[0-9]{8}$")

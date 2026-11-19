@@ -30,6 +30,26 @@ class ReclamoTiposPorFormatoTest(unittest.TestCase):
                     tipo_problema="OP-1",
                 )
 
+    def test_descripcion_es_opcional(self):
+        sin_descripcion = {k: v for k, v in DATOS_BASE.items() if k != "descripcion"}
+        for extra in ({}, {"descripcion": None}, {"descripcion": ""}, {"descripcion": "   "}):
+            with self.subTest(extra=extra):
+                reclamo = CrearReclamoRequest(
+                    **sin_descripcion, **extra, formato="Anexo 6", tipo_problema="OP-1"
+                )
+                self.assertIsNone(reclamo.descripcion)
+
+    def test_descripcion_se_recorta_y_vaciarla_en_actualizacion_la_deja_nula(self):
+        reclamo = CrearReclamoRequest(
+            **{**DATOS_BASE, "descripcion": "  Fuga en vereda  "},
+            formato="Anexo 6",
+            tipo_problema="OP-1",
+        )
+        self.assertEqual(reclamo.descripcion, "Fuga en vereda")
+        cambio = ActualizarReclamoRequest(descripcion="")
+        self.assertIsNone(cambio.descripcion)
+        self.assertIn("descripcion", cambio.model_dump(exclude_unset=True))
+
     def test_numero_suministro_requiere_siete_digitos_no_nulos(self):
         for numero in ("123456", "12345678", "123A567", "0000000"):
             with self.subTest(numero=numero), self.assertRaises(ValidationError):
